@@ -1,9 +1,10 @@
+#include "tree_sitter/alloc.h"
 #include "tree_sitter/parser.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <wchar.h>
 #include <wctype.h>
@@ -254,8 +255,8 @@ static void push_block(Scanner *s, Block b) {
         s->open_blocks.capacity = s->open_blocks.capacity != 0U
                                       ? s->open_blocks.capacity << 1U
                                       : (size_t)OPEN_BLOCKS_INITIAL_CAPACITY;
-        void *tmp = realloc(s->open_blocks.items,
-                            sizeof(Block) * s->open_blocks.capacity);
+        void *tmp = ts_realloc(s->open_blocks.items,
+                               sizeof(Block) * s->open_blocks.capacity);
         assert(tmp != NULL);
         s->open_blocks.items = tmp;
     }
@@ -311,8 +312,8 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
             // ensure open blocks has enough room
             if (s->open_blocks.capacity < blocks_count) {
               size_t capacity = roundup_32(blocks_count);
-              void *tmp = realloc(s->open_blocks.items,
-                            sizeof(Block) * capacity);
+              void *tmp = ts_realloc(s->open_blocks.items,
+                               sizeof(Block) * capacity);
               assert(tmp != NULL);
               s->open_blocks.items = tmp;
               s->open_blocks.capacity = capacity;
@@ -1676,12 +1677,14 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
 
 // NOLINTBEGIN(readability-identifier-length)
 void *tree_sitter_markdown_external_scanner_create(void) {
-    Scanner *s = (Scanner *)malloc(sizeof(Scanner));
-    s->open_blocks.items = (Block *)calloc(1, sizeof(Block));
     _Static_assert(ATX_H6_MARKER == ATX_H1_MARKER + (ATX_HEADING_LEVELS - 1),
                    "ATX marker tokens must be contiguous");
+    Scanner *s = ts_malloc(sizeof(Scanner));
+    if (s == NULL) {
+        return NULL;
+    }
+    s->open_blocks.items = NULL;
     deserialize(s, NULL, 0);
-
     return s;
 }
 // NOLINTEND(readability-identifier-length)
@@ -1712,6 +1715,6 @@ void tree_sitter_markdown_external_scanner_deserialize(void *payload,
 // NOLINTNEXTLINE(readability-identifier-length)
 void tree_sitter_markdown_external_scanner_destroy(void *payload) {
     Scanner *scanner = (Scanner *)payload;
-    free(scanner->open_blocks.items);
-    free(scanner);
+    ts_free(scanner->open_blocks.items);
+    ts_free(scanner);
 }
