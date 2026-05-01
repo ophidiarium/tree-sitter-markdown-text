@@ -1,0 +1,15 @@
+================================================================================
+Link reference definition with title
+================================================================================
+[foo]: https://example.com "Example"
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (link_reference_definition
+      (link_label)
+      (link_destination)
+      (link_title))
+    (paragraph
+      (inline))))

@@ -1,0 +1,61 @@
+================================================================================
+Unordered list with minus markers
+================================================================================
+- one
+- two
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (list_item
+        (list_marker_minus)
+        (paragraph
+          (inline)))
+      (list_item
+        (list_marker_minus)
+        (paragraph
+          (inline))))))
+
+================================================================================
+Ordered list with dot markers
+================================================================================
+1. one
+2. two
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (list_item
+        (list_marker_dot)
+        (paragraph
+          (inline)))
+      (list_item
+        (list_marker_dot)
+        (paragraph
+          (inline))))))
+
+================================================================================
+Task list items
+================================================================================
+- [x] done
+- [ ] todo
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (list_item
+        (list_marker_minus)
+        (task_list_marker_checked)
+        (paragraph
+          (inline)))
+      (list_item
+        (list_marker_minus)
+        (task_list_marker_unchecked)
+        (paragraph
+          (inline))))))

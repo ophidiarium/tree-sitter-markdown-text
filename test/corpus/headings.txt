@@ -1,0 +1,91 @@
+================================================================================
+ATX headings: all six depths expose the marker as a level field
+================================================================================
+# H1
+## H2
+### H3
+#### H4
+##### H5
+###### H6
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (atx_heading
+      level: (atx_h1_marker)
+      heading_content: (inline))
+    (section
+      (atx_heading
+        level: (atx_h2_marker)
+        heading_content: (inline))
+      (section
+        (atx_heading
+          level: (atx_h3_marker)
+          heading_content: (inline))
+        (section
+          (atx_heading
+            level: (atx_h4_marker)
+            heading_content: (inline))
+          (section
+            (atx_heading
+              level: (atx_h5_marker)
+              heading_content: (inline))
+            (section
+              (atx_heading
+                level: (atx_h6_marker)
+                heading_content: (inline))
+              (paragraph
+                (inline)))))))))
+
+================================================================================
+ATX heading without content
+================================================================================
+##
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (atx_heading
+      level: (atx_h2_marker))
+    (paragraph
+      (inline))))
+
+================================================================================
+Setext h1 heading exposes the underline as a level field
+================================================================================
+Heading One
+===========
+
+Trailing paragraph text.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (setext_heading
+      heading_content: (paragraph
+        (inline))
+      level: (setext_h1_underline))
+    (blank_line)
+    (paragraph
+      (inline))))
+
+================================================================================
+Setext h2 heading exposes the underline as a level field
+================================================================================
+Heading Two
+-----------
+
+Trailing paragraph text.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (setext_heading
+      heading_content: (paragraph
+        (inline))
+      level: (setext_h2_underline))
+    (blank_line)
+    (paragraph
+      (inline))))

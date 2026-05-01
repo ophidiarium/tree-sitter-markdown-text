@@ -1,0 +1,54 @@
+================================================================================
+Pipe table with header, delimiter and two rows
+================================================================================
+| A | B |
+|---|---|
+| a | b |
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_row
+        (pipe_table_cell)))))
+
+================================================================================
+Pipe table with alignment markers
+================================================================================
+| A | B | C |
+|:--|:-:|--:|
+| a | b | c |
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell
+          (pipe_table_align_left))
+        (pipe_table_delimiter_cell
+          (pipe_table_align_left)
+          (pipe_table_align_right))
+        (pipe_table_delimiter_cell
+          (pipe_table_align_right)))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_row
+        (pipe_table_cell)))))

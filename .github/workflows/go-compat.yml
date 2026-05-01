@@ -1,0 +1,34 @@
+name: Go Compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go-compat:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Assert committed parser.c targets ABI 14
+        run: |
+          abi=$(sed -n 's/^#define LANGUAGE_VERSION //p' src/parser.c)
+          if [ "$abi" != "14" ]; then
+            echo "src/parser.c LANGUAGE_VERSION=$abi, expected 14."
+            echo "Regenerate with: npm run generate (pins --abi 14)."
+            exit 1
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Run Go compatibility acceptance test
+        run: bash go-compat/acceptance.sh

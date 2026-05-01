@@ -1,0 +1,56 @@
+================================================================================
+Indented code block
+================================================================================
+    line one
+    line two
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (indented_code_block
+      (block_continuation))
+    (paragraph
+      (inline))))
+
+================================================================================
+Fenced code block with language info string
+================================================================================
+```go
+package main
+```
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (fenced_code_block
+      (fenced_code_block_delimiter)
+      (info_string
+        (language))
+      (block_continuation)
+      (code_fence_content
+        (block_continuation))
+      (fenced_code_block_delimiter))
+    (paragraph
+      (inline))))
+
+================================================================================
+Fenced code block with tildes, no info string
+================================================================================
+~~~
+plain
+~~~
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (fenced_code_block
+      (fenced_code_block_delimiter)
+      (block_continuation)
+      (code_fence_content
+        (block_continuation))
+      (fenced_code_block_delimiter))
+    (paragraph
+      (inline))))

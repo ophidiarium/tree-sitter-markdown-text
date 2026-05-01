@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up tree-sitter CLI
+        uses: tree-sitter/setup-action/cli@v2
+
+      - name: Run corpus tests
+        run: tree-sitter test
+
+  parse-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up tree-sitter CLI
+        uses: tree-sitter/setup-action/cli@v2
+
+      - name: Parse every file under test/fixtures/
+        shell: bash
+        run: |
+          set -o pipefail
+          FAILED=0
+          shopt -s nullglob
+          for f in test/fixtures/*.md test/fixtures/*.markdown; do
+            echo "::group::$f"
+            tree-sitter parse "$f" 2>&1 | tee /tmp/fixture-output.txt
+            ISSUE_COUNT=$(grep -Ec 'ERROR|MISSING' /tmp/fixture-output.txt || true)
+            echo "Parse recovery nodes: $ISSUE_COUNT"
+            if [ "$ISSUE_COUNT" -ne 0 ]; then
+              echo "::error file=$f::$f must parse with zero ERROR/MISSING nodes (found $ISSUE_COUNT)"
+              FAILED=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$FAILED"

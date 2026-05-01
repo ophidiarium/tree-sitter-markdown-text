@@ -1,0 +1,38 @@
+================================================================================
+Simple block quote
+================================================================================
+> line one
+> line two
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (block_quote
+      (block_quote_marker)
+      (paragraph
+        (inline
+          (block_continuation))))))
+
+================================================================================
+Nested block quote
+================================================================================
+> outer
+>
+> > inner
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (block_quote
+      (block_quote_marker)
+      (paragraph
+        (inline)
+        (block_continuation))
+      (blank_line
+        (block_continuation))
+      (block_quote
+        (block_quote_marker)
+        (paragraph
+          (inline))))))

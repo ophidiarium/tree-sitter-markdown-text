@@ -1,0 +1,38 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - grammar.js
+      - eslint.config.mjs
+      - tsconfig.json
+      - package.json
+      - package-lock.json
+      - .github/workflows/lint.yml
+  pull_request:
+    paths:
+      - grammar.js
+      - eslint.config.mjs
+      - tsconfig.json
+      - package.json
+      - package-lock.json
+      - .github/workflows/lint.yml
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          cache: npm
+          node-version: ${{vars.NODE_VERSION || '24'}}
+      - name: Install modules
+        run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+      - name: Type-check grammar.js
+        run: npm run typecheck
