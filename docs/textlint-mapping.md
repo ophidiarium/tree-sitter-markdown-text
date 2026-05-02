@@ -31,7 +31,7 @@ This grammar's node types are close to — but not byte-identical with — the t
 
 | textlint TxtNode | mdast key | `tree-sitter-markdown-text` node | Notes |
 |---|---|---|---|
-| `Str` | `text` | `word_token` / `numeric_token` / `identifier_like_token` / `path_like_token`, grouped by `text_span` | Text content is classified into tokens. `word_token` is pure alphabetic, `numeric_token` handles integers, decimals and version strings, `identifier_like_token` catches camelCase and snake_case identifiers, `path_like_token` catches slash-paths and dotted identifiers. A `text_span` groups consecutive classified tokens with no intervening structural node. |
+| `Str` | `text` | `word_token` / `numeric_token` / `identifier_like_token` / `path_like_token`, grouped by `text_span` | Text content is classified into tokens. `word_token` is Unicode alphabetic, `numeric_token` handles integers, decimals and version strings, `identifier_like_token` catches camelCase, PascalCase and snake_case identifiers, `path_like_token` catches slash-paths and dotted identifiers. A `text_span` groups consecutive classified tokens with no intervening structural node. |
 | *(no direct counterpart)* | *(no direct counterpart)* | `terminator` / `separator` / `bracket` / `operator_like` | Every punctuation lexeme is emitted as a classified node per §3.3 of the research doc. |
 | `Emphasis` | `emphasis` | `emphasis` | `*…*` or `_…_`. Simple paired delimiters (not full CommonMark flanking). |
 | `Strong` | `strong` | `strong` | `**…**` or `__…__`. |

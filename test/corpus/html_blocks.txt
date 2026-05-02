@@ -28,3 +28,26 @@ Trailing paragraph.
   (section
     (html_block
       (block_continuation))))
+
+================================================================================
+Uppercase HTML tag stays as html_block
+================================================================================
+<DIV>
+</DIV>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (html_block
+      (block_continuation)
+      (block_continuation)
+      (blank_line))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

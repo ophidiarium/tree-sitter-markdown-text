@@ -434,7 +434,19 @@
           "named": true
         },
         {
+          "type": "footnote_reference",
+          "named": true
+        },
+        {
+          "type": "html_inline",
+          "named": true
+        },
+        {
           "type": "identifier_like_token",
+          "named": true
+        },
+        {
+          "type": "image",
           "named": true
         },
         {
@@ -442,7 +454,15 @@
           "named": true
         },
         {
+          "type": "link",
+          "named": true
+        },
+        {
           "type": "math_inline",
+          "named": true
+        },
+        {
+          "type": "mdx_jsx_inline",
           "named": true
         },
         {
@@ -1578,7 +1598,23 @@
           "named": true
         },
         {
+          "type": "emphasis",
+          "named": true
+        },
+        {
+          "type": "footnote_reference",
+          "named": true
+        },
+        {
+          "type": "html_inline",
+          "named": true
+        },
+        {
           "type": "identifier_like_token",
+          "named": true
+        },
+        {
+          "type": "image",
           "named": true
         },
         {
@@ -1586,7 +1622,15 @@
           "named": true
         },
         {
+          "type": "link",
+          "named": true
+        },
+        {
           "type": "math_inline",
+          "named": true
+        },
+        {
+          "type": "mdx_jsx_inline",
           "named": true
         },
         {
@@ -1603,6 +1647,10 @@
         },
         {
           "type": "separator",
+          "named": true
+        },
+        {
+          "type": "strong",
           "named": true
         },
         {
@@ -1657,7 +1705,19 @@
           "named": true
         },
         {
+          "type": "footnote_reference",
+          "named": true
+        },
+        {
+          "type": "html_inline",
+          "named": true
+        },
+        {
           "type": "identifier_like_token",
+          "named": true
+        },
+        {
+          "type": "image",
           "named": true
         },
         {
@@ -1665,7 +1725,15 @@
           "named": true
         },
         {
+          "type": "link",
+          "named": true
+        },
+        {
           "type": "math_inline",
+          "named": true
+        },
+        {
+          "type": "mdx_jsx_inline",
           "named": true
         },
         {

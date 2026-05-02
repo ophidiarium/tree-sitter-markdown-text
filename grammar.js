@@ -43,9 +43,10 @@ const PUNCTUATION_CHARACTERS_ARRAY = [
 ];
 const PRECEDENCE_LEVEL_LINK = 10;
 const PRECEDENCE_LEVEL_FOOTNOTE = 11;
+const PRECEDENCE_LEVEL_IMAGE = 11;
 const PRECEDENCE_LEVEL_MATH_BLOCK = 12;
 const PRECEDENCE_LEVEL_DIRECTIVE_BLOCK = 12;
-const PRECEDENCE_LEVEL_IMAGE_BLOCK = 11;
+const PRECEDENCE_LEVEL_IMAGE_BLOCK = 12;
 
 export default grammar({
   name: 'markdown',
@@ -413,7 +414,7 @@ export default grammar({
       optional($._whitespace),
       ')',
       optional($._whitespace),
-      choice($._newline, $._eof),
+      choice($._newline, $._soft_line_break, $._eof),
     )),
 
     // MDX JSX block. Shallow block-level recognizer: a line that begins
@@ -432,7 +433,7 @@ export default grammar({
       choice($._newline, $._eof),
     )),
     _mdx_jsx_open_block_tag: ($) => token(prec(5, new RegExp(
-      '<[A-Z][A-Za-z0-9.]*(\\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\\s*=\\s*("[^"]*"|\'[^\']*\'|\\{[^}]*\\}|[^\\s"\'=<>`{}]+))?)*\\s*/?>',
+      '<[A-Z][A-Za-z0-9.]*(\\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\\s*=\\s*("[^"]*"|\'[^\']*\'|\\{([^{}]|\\{[^{}]*\\})*\\}|[^\\s"\'=<>`{}]+))?)*\\s*/?>',
     ))),
     _mdx_jsx_close_block_tag: ($) => token(prec(5, /<\/[A-Z][A-Za-z0-9.]*\s*>/)),
 
@@ -697,7 +698,7 @@ export default grammar({
     // --- §3.2 token classifiers -----------------------------------------
 
     // Pure alphabetic run (letters only). Simple word in prose.
-    word_token: ($) => /[A-Za-z]+/,
+    word_token: ($) => new RustRegex('\\p{L}+'),
 
     // Numeric tokens: integers, decimals, multi-dot versions (1, 1.0, 1.2.3).
     numeric_token: ($) => /[0-9]+(\.[0-9]+)*/,
@@ -706,11 +707,12 @@ export default grammar({
     // least one digit adjacent to letters (camelCase/snake_case). Requires
     // anchoring to distinguish from plain word_token / numeric_token.
     identifier_like_token: ($) => token(prec(1, choice(
-      // snake_case / kebab underscored
+      // snake_case / underscored
       /[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)+/,
       /_[A-Za-z0-9]+([_][A-Za-z0-9]+)*/,
-      // camelCase (lowercase letter followed by uppercase somewhere)
+      // camelCase / PascalCase
       /[a-z]+[A-Z][A-Za-z0-9]*/,
+      /[A-Z][a-z]+[A-Z][A-Za-z0-9]*/,
       // alnum mix (letter then digit or digit then letter)
       /[A-Za-z]+[0-9]+[A-Za-z0-9]*/,
       /[0-9]+[A-Za-z][A-Za-z0-9]*/,
@@ -800,7 +802,7 @@ export default grammar({
     // uppercase letter to distinguish from HTML. Full MDX parsing is out
     // of scope; see docs/textlint-mapping.md.
     mdx_jsx_inline: ($) => choice(
-      alias(/<[A-Z][A-Za-z0-9.]*(\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\s*=\s*("[^"]*"|'[^']*'|\{[^}]*\}|[^\s"'=<>`{}]+))?)*\s*\/?>/, $.mdx_jsx_open_tag),
+      alias(/<[A-Z][A-Za-z0-9.]*(\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\s*=\s*("[^"]*"|'[^']*'|\{([^{}]|\{[^{}]*\})*\}|[^\s"'=<>`{}]+))?)*\s*\/?>/, $.mdx_jsx_open_tag),
       alias(/<\/[A-Z][A-Za-z0-9.]*\s*>/, $.mdx_jsx_close_tag),
       alias(/\{[^{}\n]*\}/, $.mdx_jsx_expression),
     ),
@@ -827,7 +829,7 @@ export default grammar({
     _footnote_ref_open: ($) => token(prec(2, '[^')),
 
     // Inline images. Reuse link_label and link_destination for the internals.
-    image: ($) => prec.dynamic(PRECEDENCE_LEVEL_IMAGE_BLOCK, seq(
+    image: ($) => prec.dynamic(PRECEDENCE_LEVEL_IMAGE, seq(
       '!',
       $.link_label,
       choice(
@@ -870,14 +872,21 @@ export default grammar({
       $._whitespace,
       $.inline_code,
       $.autolink,
+      $.html_inline,
+      $.mdx_jsx_inline,
       $.math_inline,
+      $.image,
+      $.footnote_reference,
+      $.link,
+      $.strong,
+      $.emphasis,
       $.numeric_token,
       $.path_like_token,
       $.identifier_like_token,
       $.word_token,
       $.terminator,
       $.separator,
-      // omit brackets to avoid over-matching; omit strikethrough (no nesting)
+      // omit strikethrough itself (no same-delimiter nesting)
       $.operator_like,
     ),
 
@@ -899,7 +908,12 @@ export default grammar({
       $._whitespace,
       $.inline_code,
       $.autolink,
+      $.html_inline,
+      $.mdx_jsx_inline,
       $.math_inline,
+      $.image,
+      $.footnote_reference,
+      $.link,
       $.emphasis,
       $.strikethrough,
       $.numeric_token,
@@ -925,7 +939,12 @@ export default grammar({
       $._whitespace,
       $.inline_code,
       $.autolink,
+      $.html_inline,
+      $.mdx_jsx_inline,
       $.math_inline,
+      $.image,
+      $.footnote_reference,
+      $.link,
       $.strong,
       $.strikethrough,
       $.numeric_token,

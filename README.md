@@ -16,7 +16,7 @@ Parses `.md` (and `.markdown`, `.mdown`, `.mkd`, `.mkdn`) files into a concrete 
 - **Block quotes and callouts** &mdash; nested quotes and lazy continuations. A block quote whose first paragraph begins with `[!NOTE]` / `[!TIP]` / `[!IMPORTANT]` / `[!WARNING]` / `[!CAUTION]` (or any uppercase-only label) is surfaced as `callout` with a `callout_type` field.
 - **Thematic breaks** &mdash; `---`, `***`, `___`.
 - **HTML blocks** &mdash; all 7 CommonMark HTML block types; block-level HTML comments are aliased to `html_comment_block` for easy metric extraction.
-- **MDX JSX blocks** &mdash; shallow `mdx_jsx_block` for lines that start with an MDX-style JSX element (`<Component ...>`, `<Component/>`, `</Component>`). Uppercase-initial tag names disambiguate from HTML blocks.
+- **MDX JSX blocks** &mdash; shallow `mdx_jsx_block` for lines that start with an MDX-style JSX element (`<Component ...>`, `<Component/>`, `</Component>`). Component-style mixed-case names disambiguate from all-caps HTML blocks such as `<DIV>`.
 - **Pipe tables** &mdash; `pipe_table` with `pipe_table_header`, `pipe_table_delimiter_row`, `pipe_table_row`, `pipe_table_cell`, `pipe_table_align_left`/`pipe_table_align_right`.
 - **Link reference definitions** &mdash; `link_reference_definition` with `link_label`/`link_destination`/`link_title` children.
 - **Footnote definitions** &mdash; `footnote_definition` (`[^id]: …`) with a `footnote_label` child.
@@ -26,7 +26,7 @@ Parses `.md` (and `.markdown`, `.mdown`, `.mkd`, `.mkdn`) files into a concrete 
 
 ### Inline nodes (children of the `inline` wrapper)
 
-- **Classified text tokens** &mdash; `text_span` wraps runs of classified tokens: `word_token` (pure alphabetic), `numeric_token` (integers, decimals, versions), `identifier_like_token` (camelCase / snake_case), `path_like_token` (paths with `/` separators or dotted identifiers).
+- **Classified text tokens** &mdash; `text_span` wraps runs of classified tokens: `word_token` (Unicode alphabetic), `numeric_token` (integers, decimals, versions), `identifier_like_token` (camelCase / PascalCase / snake_case), `path_like_token` (paths with `/` separators or dotted identifiers).
 - **Punctuation classes** &mdash; every punctuation lexeme is classified: `terminator` (`.`, `?`, `!`, `。`, `…`), `separator` (`,`, `;`, `:`), `bracket` (`(`, `)`, `[`, `]`, `{`, `}`, `<`, `>`), `operator_like` (`::`, `->`, `=>`, `=`, `+`, `-`, `*`, `/`, `|`, `&`, and other punctuation).
 - **Emphasis / strong / strikethrough** &mdash; `emphasis` (`*…*` or `_…_`), `strong` (`**…**` or `__…__`), `strikethrough` (`~~…~~`), each with a `_delimiter`/`_content`/`_delimiter` sub-tree.
 - **Code spans** &mdash; `inline_code` with matched backtick-run delimiters (1 or 2 backticks).

@@ -68,3 +68,24 @@ Trailing paragraph.
         (text_span
           (word_token)
           (terminator))))))
+
+================================================================================
+MDX JSX block with nested attribute expression
+================================================================================
+<Component prop={{ key: 'value' }}/>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (mdx_jsx_block
+      (mdx_jsx_open_tag))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

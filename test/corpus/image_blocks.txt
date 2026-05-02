@@ -7,11 +7,11 @@ Trailing paragraph.
 
 (document
   (section
+    (image_block
+      (link_label)
+      (link_destination))
     (paragraph
       (inline
-        (image
-          (link_label)
-          (link_destination))
         (text_span
           (word_token))
         (text_span
@@ -27,11 +27,11 @@ Trailing paragraph.
 
 (document
   (section
+    (image_block
+      (link_label)
+      (link_destination))
     (paragraph
       (inline
-        (image
-          (link_label)
-          (link_destination))
         (text_span
           (word_token))
         (text_span
