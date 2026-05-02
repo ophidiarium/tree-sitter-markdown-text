@@ -36,6 +36,10 @@ enum {
     HTML_TAG_NAME_BUFFER = 11,
     // Sentinel written into name_length when a tag name overflows the buffer.
     HTML_TAG_NAME_TOO_LONG = 12,
+    // Fixed header bytes that `serialize`/`deserialize` write/read before the
+    // trailing Block[] payload: state, matched, indentation, column,
+    // fenced_code_block_delimiter_length.
+    SERIALIZED_HEADER_SIZE = 5,
 };
 
 // For explanation of the tokens see grammar.js
@@ -269,7 +273,7 @@ static inline Block pop_block(Scanner *s) {
     return s->open_blocks.items[--s->open_blocks.size];
 }
 
-// Write the whole state of a Scanner to a byte buffer
+// Write the whole state of a Scanner to a byte buffer.
 // NOLINTNEXTLINE(readability-identifier-length)
 static unsigned serialize(Scanner *s, char *buffer) {
     unsigned size = 0;
@@ -278,6 +282,7 @@ static unsigned serialize(Scanner *s, char *buffer) {
     buffer[size++] = (char)s->indentation;
     buffer[size++] = (char)s->column;
     buffer[size++] = (char)s->fenced_code_block_delimiter_length;
+    assert(size == SERIALIZED_HEADER_SIZE);
     size_t blocks_count = s->open_blocks.size;
     if (blocks_count > 0) {
         memcpy(&buffer[size], s->open_blocks.items,
@@ -298,29 +303,40 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
     s->indentation = 0;
     s->column = 0;
     s->fenced_code_block_delimiter_length = 0;
-    if (length > 0) {
-        size_t size = 0;
-        s->state = (uint8_t)buffer[size++];
-        s->matched = (uint8_t)buffer[size++];
-        s->indentation = (uint8_t)buffer[size++];
-        s->column = (uint8_t)buffer[size++];
-        s->fenced_code_block_delimiter_length = (uint8_t)buffer[size++];
-        size_t blocks_size = length - size;
-        if (blocks_size > 0) {
-            size_t blocks_count = blocks_size / sizeof(Block);
+    // The serialized form is a fixed 5-byte header followed by zero or more
+    // Block entries. Refuse to read a payload that is either too short for the
+    // header or whose trailing segment is not a whole number of Block values;
+    // either case would point at a corrupted buffer and we'd rather resume
+    // from a clean slate than walk off the end of `buffer` or copy a partial
+    // Block onto the open-block stack.
+    if (length < SERIALIZED_HEADER_SIZE) {
+        return;
+    }
+    size_t blocks_size = length - SERIALIZED_HEADER_SIZE;
+    if (blocks_size % sizeof(Block) != 0) {
+        return;
+    }
+    size_t size = 0;
+    s->state = (uint8_t)buffer[size++];
+    s->matched = (uint8_t)buffer[size++];
+    s->indentation = (uint8_t)buffer[size++];
+    s->column = (uint8_t)buffer[size++];
+    s->fenced_code_block_delimiter_length = (uint8_t)buffer[size++];
+    if (blocks_size > 0) {
+        size_t blocks_count = blocks_size / sizeof(Block);
 
-            // ensure open blocks has enough room
-            if (s->open_blocks.capacity < blocks_count) {
-              size_t capacity = roundup_32(blocks_count);
-              void *tmp = ts_realloc(s->open_blocks.items,
-                               sizeof(Block) * capacity);
-              assert(tmp != NULL);
-              s->open_blocks.items = tmp;
-              s->open_blocks.capacity = capacity;
-            }
-            memcpy(s->open_blocks.items, &buffer[size], blocks_size);
-            s->open_blocks.size = blocks_count;
+        // ensure open blocks has enough room
+        if (s->open_blocks.capacity < blocks_count) {
+            size_t capacity = roundup_32(blocks_count);
+            void *tmp = ts_realloc(s->open_blocks.items,
+                                   sizeof(Block) * capacity);
+            assert(tmp != NULL);
+            s->open_blocks.items = tmp;
+            s->open_blocks.capacity = capacity;
         }
+        memcpy(s->open_blocks.items, &buffer[size],
+               blocks_count * sizeof(Block));
+        s->open_blocks.size = blocks_count;
     }
 }
 
