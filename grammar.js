@@ -740,16 +740,20 @@ export default grammar({
 
     // Operator-like punctuation. Covers spec-listed operators plus the
     // remaining punctuation chars so every punctuation lexeme has a class.
+    // Non-ASCII symbol runes (emoji, currency marks, copyright signs, etc.)
+    // also land here so ordinary prose never falls into ERROR.
     operator_like: ($) => choice(
       // Multi-character operators (longer tokens first so lexer prefers them)
       '::', '->', '=>',
       // `$$` appearing inline (outside a math_block context) classifies as operator_like.
       alias($._dollar_dollar_inline, '$$'),
+      $._unicode_symbol_run,
       '=', '+', '-', '*', '/', '|', '&',
       // Remaining ASCII punctuation not covered by other classes.
       '"', '#', '$', '%', '\'', '@', '\\', '^', '_', '`', '~',
     ),
     _dollar_dollar_inline: ($) => token(prec(3, '$$')),
+    _unicode_symbol_run: ($) => new RustRegex('[\\p{S}&&[^\\x00-\\x7F]]+'),
 
     // --- §3.2 structural inline nodes -----------------------------------
 
@@ -790,20 +794,24 @@ export default grammar({
       alias(/<\?([^?]|\?[^>])*\?>/, $.html_processing_instruction),
       // Declaration
       alias(/<![A-Z][^>]*>/, $.html_declaration),
-      // Open or self-closing tag. Tag name must start with ASCII lowercase
-      // to avoid claiming MDX JSX tags (which start uppercase).
-      alias(/<[a-z][a-z0-9-]*(\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/, $.html_open_tag),
+      // Open or self-closing tag. Lowercase-starting tags and all-caps tags
+      // are HTML; mixed-case uppercase-starting names fall through to MDX JSX.
+      alias(/<(?:[a-z][A-Za-z0-9-]*|[A-Z][A-Z0-9-]*)(\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/, $.html_open_tag),
       // Closing tag
-      alias(/<\/[a-z][a-z0-9-]*\s*>/, $.html_close_tag),
+      alias(/<\/(?:[a-z][A-Za-z0-9-]*|[A-Z][A-Z0-9-]*)\s*>/, $.html_close_tag),
     ),
 
     // MDX JSX inline. Shallow recognizer: matches <Name ...>, </Name>,
-    // <Name/>, and {expression} as opaque spans. Name starts with an
-    // uppercase letter to distinguish from HTML. Full MDX parsing is out
-    // of scope; see docs/textlint-mapping.md.
+    // <Name/>, and {expression} as opaque spans. Mixed-case names that start
+    // with an uppercase letter distinguish MDX JSX from all-caps HTML tags.
+    // Full MDX parsing is out of scope; see docs/textlint-mapping.md.
     mdx_jsx_inline: ($) => choice(
-      alias(/<[A-Z][A-Za-z0-9.]*(\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\s*=\s*("[^"]*"|'[^']*'|\{([^{}]|\{[^{}]*\})*\}|[^\s"'=<>`{}]+))?)*\s*\/?>/, $.mdx_jsx_open_tag),
-      alias(/<\/[A-Z][A-Za-z0-9.]*\s*>/, $.mdx_jsx_close_tag),
+      alias(new RegExp([
+        '<[A-Z][A-Za-z0-9.]*[a-z][A-Za-z0-9.]*',
+        '(\\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*',
+        '(\\s*=\\s*("[^"]*"|\'[^\']*\'|\\{([^{}]|\\{[^{}]*\\})*\\}|[^\\s"\'=<>`{}]+))?)*\\s*/?>',
+      ].join('')), $.mdx_jsx_open_tag),
+      alias(/<\/[A-Z][A-Za-z0-9.]*[a-z][A-Za-z0-9.]*\s*>/, $.mdx_jsx_close_tag),
       alias(/\{[^{}\n]*\}/, $.mdx_jsx_expression),
     ),
 

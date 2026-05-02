@@ -51,6 +51,37 @@ Trailing paragraph.
           (terminator))))))
 
 ================================================================================
+Unicode symbols in prose
+================================================================================
+Done ✅ costs €5 © 2026.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like))
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like)
+          (numeric_token))
+        (text_span
+          (operator_like))
+        (text_span
+          (numeric_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
 Identifier-like variants
 ================================================================================
 PascalCase camelCase snake_case _private v1 2cool.
@@ -427,6 +458,34 @@ Trailing paragraph.
 Inline HTML tag
 ================================================================================
 See <span>raw</span> here.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (html_inline
+          (html_open_tag))
+        (text_span
+          (word_token))
+        (html_inline
+          (html_close_tag))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Uppercase inline HTML tag
+================================================================================
+See <DIV class="x">raw</DIV> now.
 Trailing paragraph.
 --------------------------------------------------------------------------------
 
