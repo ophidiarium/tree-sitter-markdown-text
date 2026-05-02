@@ -49,7 +49,7 @@ Display this information to the user.
 - Verify each finding against the current code and only fix it if confirmed by code.
 - Ideally, start with adding a regression test if comment is about a potential bug
 - If user is giving you a link to "nitpicks" comment that means it is MANDATORY to fix in this PR
-- NO TODOs, NO placeholders, NO deferred fixes, NO linting disabling comments
+- NO TODOs, NO placeholders, NO deferred fixes, NO unnecessary linting disabling comments; any necessary suppression must be justified inline
 - Read the relevant files and make the changes requested
 - If the comment references multiple issues, fix all of them
 - If unclear, make your best judgment and proceed
@@ -105,3 +105,18 @@ If any step fails:
 - Report the exact error
 - Show what was completed
 - Ask user how to proceed
+
+Common failure scenarios:
+
+- Changes applied but `git commit` fails: leave the working tree intact, show `git status --short`, the commit error, and the files changed. Ask whether to retry after fixing the error, adjust the patch, or stop with uncommitted changes.
+- Commit succeeds but `git push` fails: keep the local commit, show the commit SHA, the push error, and `git status --short --branch`. Retry transient network failures once; for divergent history, run `git fetch` and show `git log --oneline --left-right --cherry-pick @{u}...HEAD` before asking whether to rebase, merge, or force-with-lease.
+- Reply API call fails: treat it as blocking only when the requested outcome requires a visible PR reply. Otherwise report it as a warning after confirming the commit is pushed. Before retrying, check whether a reply for the same commit already exists to avoid duplicates, then ask whether to retry the direct reply or leave the comment unreplied.
+
+For each failure, report:
+
+```text
+Step failed: <step name>
+Error: <exact error>
+Completed: <completed steps>
+Next: <specific question for the user>
+```

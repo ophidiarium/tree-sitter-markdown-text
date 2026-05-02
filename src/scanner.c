@@ -148,6 +148,12 @@ static char ascii_tolower(int32_t codepoint) {
     return (char)codepoint;
 }
 
+static size_t max_serialized_blocks(void) {
+    return ((size_t)TREE_SITTER_SERIALIZATION_BUFFER_SIZE -
+            (size_t)SERIALIZED_HEADER_SIZE) /
+           sizeof(Block);
+}
+
 // Returns the indentation level which lines of a list item should have at
 // minimum. Should only be called with blocks for which `is_list_item` returns
 // true.
@@ -245,6 +251,7 @@ static size_t roundup_32(size_t x) {
     x++;
     return x;
 }
+// NOLINTEND(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 
 typedef struct {
     // A stack of open blocks in the current parse state
@@ -257,8 +264,8 @@ typedef struct {
     // Parser state flags
     uint8_t state;
     // Number of blocks that have been matched so far. Only changes during
-    // matching and is reset after every line ending
-    uint8_t matched;
+    // matching and is reset after every line ending.
+    size_t matched;
     // Consumed but "unused" indentation. Sometimes a tab needs to be "split" to
     // be used in multiple tokens.
     uint8_t indentation;
@@ -272,10 +279,17 @@ typedef struct {
 
 // NOLINTNEXTLINE(readability-identifier-length) — `s`/`b` are the scanner/block conventions throughout this file
 static bool push_block(Scanner *s, Block b) {
+    size_t max_blocks = max_serialized_blocks();
+    if (s->open_blocks.size >= max_blocks) {
+        return false;
+    }
     if (s->open_blocks.size == s->open_blocks.capacity) {
         size_t capacity = s->open_blocks.capacity != 0U
                               ? s->open_blocks.capacity << 1U
                               : (size_t)OPEN_BLOCKS_INITIAL_CAPACITY;
+        if (capacity > max_blocks) {
+            capacity = max_blocks;
+        }
         void *tmp = ts_realloc(s->open_blocks.items,
                                sizeof(Block) * capacity);
         if (tmp == NULL) {
@@ -304,9 +318,7 @@ static unsigned serialize(Scanner *s, char *buffer) {
     buffer[size++] = (char)s->column;
     buffer[size++] = (char)s->fenced_code_block_delimiter_length;
     assert(size == SERIALIZED_HEADER_SIZE);
-    size_t remaining_capacity =
-        TREE_SITTER_SERIALIZATION_BUFFER_SIZE - (size_t)size;
-    size_t max_blocks = remaining_capacity / sizeof(Block);
+    size_t max_blocks = max_serialized_blocks();
     size_t blocks_count = s->open_blocks.size < max_blocks
                               ? s->open_blocks.size
                               : max_blocks;
@@ -344,7 +356,7 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
     }
     size_t size = 0;
     s->state = (uint8_t)buffer[size++];
-    s->matched = (uint8_t)buffer[size++];
+    s->matched = (size_t)(uint8_t)buffer[size++];
     s->indentation = (uint8_t)buffer[size++];
     s->column = (uint8_t)buffer[size++];
     s->fenced_code_block_delimiter_length = (uint8_t)buffer[size++];
@@ -353,6 +365,9 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
 
         // ensure open blocks has enough room
         if (s->open_blocks.capacity < blocks_count) {
+            if (blocks_count > max_serialized_blocks()) {
+                return;
+            }
             size_t capacity = roundup_32(blocks_count);
             void *tmp = ts_realloc(s->open_blocks.items,
                                    sizeof(Block) * capacity);
@@ -654,7 +669,8 @@ static bool parse_thematic_break_underscore(Scanner *s, TSLexer *lexer,
         }
     }
     bool line_end = lexer->lookahead == '\n' || lexer->lookahead == '\r';
-    if (underscore_count >= 3 && line_end && valid_symbols[THEMATIC_BREAK]) {
+    if (s->indentation <= MAX_NON_CODE_INDENT && underscore_count >= 3 &&
+        line_end && valid_symbols[THEMATIC_BREAK]) {
         lexer->result_symbol = THEMATIC_BREAK;
         mark_end(s, lexer);
         s->indentation = 0;
@@ -714,6 +730,7 @@ static bool parse_atx_heading(Scanner *s, TSLexer *lexer,
 static bool parse_setext_underline(Scanner *s, TSLexer *lexer,
                                    const bool *valid_symbols) {
     if (valid_symbols[SETEXT_H1_UNDERLINE] &&
+        s->indentation <= MAX_NON_CODE_INDENT &&
         s->matched == s->open_blocks.size) {
         mark_end(s, lexer);
         while (lexer->lookahead == '=') {
@@ -848,14 +865,15 @@ static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
          valid_symbols[LIST_MARKER_DOT] ||
          valid_symbols[LIST_MARKER_PARENTHESIS_DONT_INTERRUPT] ||
          valid_symbols[LIST_MARKER_DOT_DONT_INTERRUPT])) {
-        size_t digits = 1;
-        bool dont_interrupt = !is_ascii_digit(lexer->lookahead);
-        advance(s, lexer);
+        size_t digits = 0;
+        size_t marker_value = 0;
         while (is_ascii_digit(lexer->lookahead)) {
-            dont_interrupt = true;
+            marker_value =
+                (marker_value * 10U) + (size_t)(lexer->lookahead - '0');
             digits++;
             advance(s, lexer);
         }
+        bool dont_interrupt = marker_value != 1U;
         if (digits >= 1 && digits <= ORDERED_LIST_MAX_DIGITS) {
             bool dot = false;
             bool parenthesis = false;
@@ -1384,8 +1402,8 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
         }
     }
     s->simulate = true;
-    uint8_t matched_temp = 0;
-    while (matched_temp < (uint8_t)s->open_blocks.size) {
+    size_t matched_temp = 0;
+    while (matched_temp < s->open_blocks.size) {
         if (match(s, lexer, s->open_blocks.items[matched_temp])) {
             matched_temp++;
         } else {
@@ -1555,9 +1573,7 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             case '1':
             case '2':
             case '3':
-     
-// NOLINTEND(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
-       case '4':
+            case '4':
             case '5':
             case '6':
             case '7':
@@ -1582,8 +1598,8 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         }
     } else { // we are in the state of trying to match all currently open blocks
         bool partial_success = false;
-        while (s->matched < (uint8_t)s->open_blocks.size) {
-            if (s->matched == (uint8_t)s->open_blocks.size - 1 &&
+        while (s->matched < s->open_blocks.size) {
+            if (s->matched + 1U == s->open_blocks.size &&
                 (s->state & STATE_CLOSE_BLOCK)) {
                 if (!partial_success) {
                     s->state &= ~STATE_CLOSE_BLOCK;
@@ -1645,10 +1661,10 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                 }
             }
             s->simulate = true;
-            uint8_t matched_temp = s->matched;
+            size_t matched_temp = s->matched;
             s->matched = 0;
             bool one_will_be_matched = false;
-            while (s->matched < (uint8_t)s->open_blocks.size) {
+            while (s->matched < s->open_blocks.size) {
                 if (match(s, lexer, s->open_blocks.items[s->matched])) {
                     s->matched++;
                     one_will_be_matched = true;
