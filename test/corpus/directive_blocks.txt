@@ -1,0 +1,68 @@
+================================================================================
+Directive block with name
+================================================================================
+:::note
+body line
+:::
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (directive_block
+      (directive_block_delimiter)
+      (directive_name)
+      (directive_block_content)
+      (directive_block_delimiter))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Directive block without name
+================================================================================
+:::
+no name, just body
+:::
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (directive_block
+      (directive_block_delimiter)
+      (directive_block_content)
+      (directive_block_delimiter))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Empty directive block
+================================================================================
+:::warning
+:::
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (directive_block
+      (directive_block_delimiter)
+      (directive_name)
+      (directive_block_delimiter))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

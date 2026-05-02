@@ -7,7 +7,12 @@ Hello world.
 (document
   (section
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Multiple paragraphs separated by blank lines
@@ -22,13 +27,28 @@ Third paragraph.
 (document
   (section
     (paragraph
-      (inline))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))
     (blank_line)
     (paragraph
-      (inline))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))
     (blank_line)
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Paragraph with soft line breaks
@@ -41,4 +61,16 @@ line three
 (document
   (section
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))))))

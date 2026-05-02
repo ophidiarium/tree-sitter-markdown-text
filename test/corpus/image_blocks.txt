@@ -1,0 +1,70 @@
+================================================================================
+Block image with simple destination
+================================================================================
+![alt text](./pic.png)
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (image
+          (link_label)
+          (link_destination))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Block image with external URL
+================================================================================
+![Logo](https://example.com/logo.svg)
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (image
+          (link_label)
+          (link_destination))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Inline image in paragraph is not an image block
+================================================================================
+Some text ![alt](./pic.png) and more text.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (image
+          (link_label)
+          (link_destination))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

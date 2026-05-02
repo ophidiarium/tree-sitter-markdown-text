@@ -1156,6 +1156,12 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
     if (starting_slash) {
         advance(s, lexer);
     }
+    // Reject tag names that start with an ASCII uppercase letter so that
+    // MDX-style JSX tags (<Component/>) fall through to the MDX JSX block
+    // rule rather than being claimed as a generic HTML block type 7.
+    if (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z') {
+        return false;
+    }
     char name[HTML_TAG_NAME_BUFFER];
     size_t name_length = 0;
     while (is_ascii_alpha(lexer->lookahead)) {

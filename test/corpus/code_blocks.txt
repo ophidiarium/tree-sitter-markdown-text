@@ -11,7 +11,12 @@ Trailing paragraph.
     (indented_code_block
       (block_continuation))
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Indented underscore and equals markers stay code
@@ -26,7 +31,12 @@ Trailing paragraph.
     (indented_code_block
       (block_continuation))
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Fenced code block with language info string
@@ -48,7 +58,12 @@ Trailing paragraph.
         (block_continuation))
       (fenced_code_block_delimiter))
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Fenced code block with tildes, no info string
@@ -68,4 +83,9 @@ Trailing paragraph.
         (block_continuation))
       (fenced_code_block_delimiter))
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

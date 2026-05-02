@@ -14,29 +14,46 @@ Trailing paragraph.
   (section
     (atx_heading
       level: (atx_h1_marker)
-      heading_content: (inline))
+      heading_content: (inline
+        (text_span
+          (identifier_like_token))))
     (section
       (atx_heading
         level: (atx_h2_marker)
-        heading_content: (inline))
+        heading_content: (inline
+          (text_span
+            (identifier_like_token))))
       (section
         (atx_heading
           level: (atx_h3_marker)
-          heading_content: (inline))
+          heading_content: (inline
+            (text_span
+              (identifier_like_token))))
         (section
           (atx_heading
             level: (atx_h4_marker)
-            heading_content: (inline))
+            heading_content: (inline
+              (text_span
+                (identifier_like_token))))
           (section
             (atx_heading
               level: (atx_h5_marker)
-              heading_content: (inline))
+              heading_content: (inline
+                (text_span
+                  (identifier_like_token))))
             (section
               (atx_heading
                 level: (atx_h6_marker)
-                heading_content: (inline))
+                heading_content: (inline
+                  (text_span
+                    (identifier_like_token))))
               (paragraph
-                (inline)))))))))
+                (inline
+                  (text_span
+                    (word_token))
+                  (text_span
+                    (word_token)
+                    (terminator)))))))))))
 
 ================================================================================
 ATX heading without content
@@ -50,7 +67,12 @@ Trailing paragraph.
     (atx_heading
       level: (atx_h2_marker))
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Setext h1 heading exposes the underline as a level field
@@ -65,11 +87,22 @@ Trailing paragraph text.
   (section
     (setext_heading
       heading_content: (paragraph
-        (inline))
+        (inline
+          (text_span
+            (word_token))
+          (text_span
+            (word_token))))
       level: (setext_h1_underline))
     (blank_line)
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Setext h2 heading exposes the underline as a level field
@@ -84,8 +117,19 @@ Trailing paragraph text.
   (section
     (setext_heading
       heading_content: (paragraph
-        (inline))
+        (inline
+          (text_span
+            (word_token))
+          (text_span
+            (word_token))))
       level: (setext_h2_underline))
     (blank_line)
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

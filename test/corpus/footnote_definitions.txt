@@ -1,0 +1,86 @@
+================================================================================
+Footnote definition with simple label
+================================================================================
+[^foo]: A footnote body.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (footnote_definition
+      (footnote_label
+        (footnote_label_open))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Multiple footnote definitions
+================================================================================
+[^1]: First footnote.
+[^two]: Second footnote, longer.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (footnote_definition
+      (footnote_label
+        (footnote_label_open))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))
+    (footnote_definition
+      (footnote_label
+        (footnote_label_open))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (separator))
+        (text_span
+          (word_token)
+          (terminator))))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Link reference definition is not mistaken for a footnote definition
+================================================================================
+[foo]: https://example.com
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (link_reference_definition
+      (link_label)
+      (link_destination))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
