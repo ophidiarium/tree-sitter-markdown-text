@@ -157,8 +157,8 @@ export default grammar({
       $.list,
       $.fenced_code_block,
       $.blank_line,
-      $.mdx_jsx_block,
       $.html_block,
+      $.mdx_jsx_block,
       $.link_reference_definition,
       $.footnote_definition,
       $.math_block,
@@ -343,14 +343,37 @@ export default grammar({
     //
     // https://github.github.com/gfm/#footnotes (not in the base spec, widely
     // supported extension).
-    footnote_definition: ($) => prec.dynamic(PRECEDENCE_LEVEL_FOOTNOTE, seq(
+    footnote_definition: ($) => choice(
+      prec.dynamic(PRECEDENCE_LEVEL_FOOTNOTE + 1, seq(
+        $._footnote_definition_start,
+        $._newline,
+        $._footnote_definition_continuation,
+      )),
+      prec.dynamic(PRECEDENCE_LEVEL_FOOTNOTE, seq(
+        $._footnote_definition_start,
+        choice($._newline, $._eof),
+      )),
+    ),
+    _footnote_definition_start: ($) => seq(
       optional($._whitespace),
       $.footnote_label,
       ':',
       optional($._whitespace),
       alias($._inline_content_line, $.inline),
-      choice($._newline, $._eof),
-    )),
+    ),
+    _footnote_definition_continuation: ($) => choice(
+      prec.dynamic(1, seq(
+        $._whitespace,
+        alias($._inline_content_line, $.inline),
+        $._newline,
+        $._footnote_definition_continuation,
+      )),
+      seq(
+        $._whitespace,
+        alias($._inline_content_line, $.inline),
+        choice($._newline, $._eof),
+      ),
+    ),
     footnote_label: ($) => seq(alias($._footnote_ref_open, $.footnote_label_open), repeat1(choice(
       $._word,
       $.backslash_escape,
@@ -498,7 +521,7 @@ export default grammar({
         alias($._callout_marker_open, $.callout_marker_open),
         field('callout_type', alias($._callout_type, $.callout_type)),
         alias($._callout_marker_close, $.callout_marker_close),
-        optional($._inline_content),
+        optional(alias($._inline_content_line, $.inline)),
       ), $.paragraph),
       choice($._newline, $._eof),
     ),
@@ -619,8 +642,7 @@ export default grammar({
     ),
     _task_list_item_content: ($) => prec(1, seq(
       choice($.task_list_marker_checked, $.task_list_marker_unchecked),
-      $._whitespace,
-      $.paragraph,
+      optional(seq($._whitespace, $.paragraph)),
       repeat($._block),
     )),
 
@@ -894,6 +916,7 @@ export default grammar({
       $.word_token,
       $.terminator,
       $.separator,
+      $.bracket,
       // omit strikethrough itself (no same-delimiter nesting)
       $.operator_like,
     ),
@@ -930,6 +953,7 @@ export default grammar({
       $.word_token,
       $.terminator,
       $.separator,
+      $.bracket,
       $.operator_like,
     ),
 
@@ -961,6 +985,7 @@ export default grammar({
       $.word_token,
       $.terminator,
       $.separator,
+      $.bracket,
       $.operator_like,
     ),
 
@@ -1117,6 +1142,9 @@ export default grammar({
     [$.link_reference_definition],
     [$.link_label, $._line],
     [$.link_label, $.footnote_label, $._line],
+    [$.footnote_definition],
+    [$._footnote_definition_start, $._inline_element],
+    [$._footnote_definition_continuation],
     [$.footnote_definition, $._line],
     [$.footnote_definition, $.link_reference_definition, $._line],
     [$.image_block, $._line],

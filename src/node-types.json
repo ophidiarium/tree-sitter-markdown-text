@@ -263,6 +263,10 @@
           "named": true
         },
         {
+          "type": "inline",
+          "named": true
+        },
+        {
           "type": "link_reference_definition",
           "named": true
         },
@@ -431,6 +435,10 @@
       "types": [
         {
           "type": "autolink",
+          "named": true
+        },
+        {
+          "type": "bracket",
           "named": true
         },
         {
@@ -1281,62 +1289,14 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
+      "required": true,
       "types": [
-        {
-          "type": "autolink",
-          "named": true
-        },
         {
           "type": "block_continuation",
           "named": true
         },
         {
-          "type": "emphasis",
-          "named": true
-        },
-        {
-          "type": "footnote_reference",
-          "named": true
-        },
-        {
-          "type": "html_inline",
-          "named": true
-        },
-        {
-          "type": "image",
-          "named": true
-        },
-        {
           "type": "inline",
-          "named": true
-        },
-        {
-          "type": "inline_code",
-          "named": true
-        },
-        {
-          "type": "link",
-          "named": true
-        },
-        {
-          "type": "math_inline",
-          "named": true
-        },
-        {
-          "type": "mdx_jsx_inline",
-          "named": true
-        },
-        {
-          "type": "strikethrough",
-          "named": true
-        },
-        {
-          "type": "strong",
-          "named": true
-        },
-        {
-          "type": "text_span",
           "named": true
         }
       ]
@@ -1598,6 +1558,10 @@
           "named": true
         },
         {
+          "type": "bracket",
+          "named": true
+        },
+        {
           "type": "emphasis",
           "named": true
         },
@@ -1698,6 +1662,10 @@
       "types": [
         {
           "type": "autolink",
+          "named": true
+        },
+        {
+          "type": "bracket",
           "named": true
         },
         {

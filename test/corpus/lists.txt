@@ -117,6 +117,33 @@ Trailing paragraph.
               (terminator))))))))
 
 ================================================================================
+Empty task list items
+================================================================================
+- [ ]
+- [x]
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (task_list_item
+        (list_marker_minus)
+        (task_list_marker_unchecked)
+        (blank_line))
+      (task_list_item
+        (list_marker_minus)
+        (task_list_marker_checked)
+        (blank_line)))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
 Mixed list: task and non-task items coexist
 ================================================================================
 - [x] done

@@ -14,24 +14,25 @@ Trailing paragraph.
         (callout_marker_open)
         callout_type: (callout_type)
         (callout_marker_close)
+        (block_continuation)
         (paragraph
-          (block_continuation)
-          (text_span
-            (word_token))
-          (text_span
-            (word_token))
-          (text_span
-            (word_token))
-          (text_span
-            (word_token))
-          (text_span
-            (word_token)
-            (terminator))
-          (text_span
-            (word_token))
-          (text_span
-            (word_token)
-            (terminator)))))))
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
 
 ================================================================================
 Callout WARNING with inline content after marker
@@ -49,22 +50,24 @@ Trailing paragraph.
         (callout_marker_open)
         callout_type: (callout_type)
         (callout_marker_close)
+        (inline
+          (text_span
+            (word_token))
+          (text_span
+            (word_token)))
+        (block_continuation)
         (paragraph
-          (text_span
-            (word_token))
-          (text_span
-            (word_token))
-          (block_continuation)
-          (text_span
-            (word_token))
-          (text_span
-            (word_token)
-            (terminator))
-          (text_span
-            (word_token))
-          (text_span
-            (word_token)
-            (terminator)))))))
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
 
 ================================================================================
 Any uppercase word after [! becomes a callout type
@@ -83,10 +86,11 @@ Trailing paragraph.
         (callout_marker_open)
         callout_type: (callout_type)
         (callout_marker_close)
+        (block_continuation)
         (paragraph
-          (block_continuation)
-          (text_span
-            (word_token)))))
+          (inline
+            (text_span
+              (word_token))))))
     (blank_line)
     (paragraph
       (inline

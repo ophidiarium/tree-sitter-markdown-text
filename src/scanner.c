@@ -1158,13 +1158,9 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
     }
     bool starts_with_ascii_uppercase =
         lexer->lookahead >= 'A' && lexer->lookahead <= 'Z';
-    bool tag_name_has_lowercase = false;
     char name[HTML_TAG_NAME_BUFFER];
     size_t name_length = 0;
     while (is_ascii_alpha(lexer->lookahead)) {
-        tag_name_has_lowercase =
-            tag_name_has_lowercase ||
-            (lexer->lookahead >= 'a' && lexer->lookahead <= 'z');
         if (name_length < HTML_TAG_NAME_MAX) {
             name[name_length++] = ascii_tolower(lexer->lookahead);
         } else {
@@ -1223,10 +1219,10 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
         }
     }
 
-    // Let known HTML tags match case-insensitively above, and keep all-caps
-    // custom tags like <FOO> eligible for CommonMark HTML block type 7. Mixed
-    // uppercase-initial names such as <Component/> fall through to MDX JSX.
-    if (starts_with_ascii_uppercase && tag_name_has_lowercase) {
+    // Known HTML tags already matched case-insensitively above. Any remaining
+    // ASCII-uppercase start tag falls through to MDX JSX instead of becoming a
+    // generic CommonMark HTML block type 7.
+    if (starts_with_ascii_uppercase) {
         return false;
     }
 

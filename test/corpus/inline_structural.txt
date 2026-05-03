@@ -248,6 +248,49 @@ Trailing paragraph.
           (terminator))))))
 
 ================================================================================
+Formatted spans include bracket punctuation
+================================================================================
+A *(x)* **(y)** ~~(z)~~ end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (emphasis
+          (emphasis_delimiter)
+          (emphasis_content
+            (bracket)
+            (word_token)
+            (bracket))
+          (emphasis_delimiter))
+        (strong
+          (strong_delimiter)
+          (strong_content
+            (bracket)
+            (word_token)
+            (bracket))
+          (strong_delimiter))
+        (strikethrough
+          (strikethrough_delimiter)
+          (strikethrough_content
+            (bracket)
+            (word_token)
+            (bracket))
+          (strikethrough_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
 MDX JSX inline nested attribute expression
 ================================================================================
 Inline <Component prop={{ key: 'value' }}/> end.

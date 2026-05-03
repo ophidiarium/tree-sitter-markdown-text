@@ -20,6 +20,27 @@ Trailing paragraph.
           (terminator))))))
 
 ================================================================================
+All-caps custom tag is MDX JSX block
+================================================================================
+<FOO>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (mdx_jsx_block
+      (mdx_jsx_open_tag))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
 MDX JSX open and close tags on separate lines
 ================================================================================
 <MyBlock>
