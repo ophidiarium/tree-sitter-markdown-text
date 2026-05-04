@@ -1852,16 +1852,6 @@
     }
   },
   {
-    "type": "task_list_marker_checked",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "task_list_marker_unchecked",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "terminator",
     "named": true,
     "fields": {}
@@ -2218,6 +2208,14 @@
   },
   {
     "type": "setext_h2_underline",
+    "named": true
+  },
+  {
+    "type": "task_list_marker_checked",
+    "named": true
+  },
+  {
+    "type": "task_list_marker_unchecked",
     "named": true
   },
   {

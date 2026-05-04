@@ -66,6 +66,8 @@ typedef enum {
     LIST_MARKER_STAR_DONT_INTERRUPT,
     LIST_MARKER_PARENTHESIS_DONT_INTERRUPT,
     LIST_MARKER_DOT_DONT_INTERRUPT,
+    TASK_LIST_MARKER_CHECKED,
+    TASK_LIST_MARKER_UNCHECKED,
     FENCED_CODE_BLOCK_START_BACKTICK,
     FENCED_CODE_BLOCK_START_TILDE,
     BLANK_LINE_START,
@@ -209,6 +211,8 @@ static const bool paragraph_interrupt_symbols[] = {
     false, // LIST_MARKER_STAR_DONT_INTERRUPT,
     false, // LIST_MARKER_PARENTHESIS_DONT_INTERRUPT,
     false, // LIST_MARKER_DOT_DONT_INTERRUPT,
+    false, // TASK_LIST_MARKER_CHECKED,
+    false, // TASK_LIST_MARKER_UNCHECKED,
     true,  // FENCED_CODE_BLOCK_START_BACKTICK,
     true,  // FENCED_CODE_BLOCK_START_TILDE,
     true,  // BLANK_LINE_START,
@@ -562,6 +566,49 @@ static bool parse_fenced_code_block(Scanner *s, const char delimiter,
     return false;
 }
 // NOLINTEND(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
+
+
+// NOLINTBEGIN(readability-identifier-length)
+static bool parse_task_list_marker(Scanner *s, TSLexer *lexer,
+                                   const bool *valid_symbols) {
+    if (!(valid_symbols[TASK_LIST_MARKER_CHECKED] ||
+          valid_symbols[TASK_LIST_MARKER_UNCHECKED]) ||
+        lexer->lookahead != '[') {
+        return false;
+    }
+
+    advance(s, lexer);
+    bool checked = false;
+    bool unchecked = false;
+    if (lexer->lookahead == 'x' || lexer->lookahead == 'X') {
+        checked = true;
+    } else if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+        unchecked = true;
+    }
+    if ((!checked || !valid_symbols[TASK_LIST_MARKER_CHECKED]) &&
+        (!unchecked || !valid_symbols[TASK_LIST_MARKER_UNCHECKED])) {
+        return false;
+    }
+
+    advance(s, lexer);
+    if (lexer->lookahead != ']') {
+        return false;
+    }
+
+    advance(s, lexer);
+    if (lexer->lookahead != ' ' && lexer->lookahead != '\t' &&
+        lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
+        !lexer->eof(lexer)) {
+        return false;
+    }
+
+    lexer->result_symbol = TASK_LIST_MARKER_UNCHECKED;
+    if (checked) {
+        lexer->result_symbol = TASK_LIST_MARKER_CHECKED;
+    }
+    return true;
+}
+// NOLINTEND(readability-identifier-length)
 
 
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
@@ -1595,6 +1642,8 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                 // A minus could mark a list marker, a thematic break or a
                 // setext underline
                 return parse_minus(s, lexer, valid_symbols);
+            case '[':
+                return parse_task_list_marker(s, lexer, valid_symbols);
             case '<':
                 // A < could mark the beginning of a html block
                 return parse_html_block(s, lexer, valid_symbols);

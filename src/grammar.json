@@ -5482,22 +5482,43 @@
                     "name": "_whitespace"
                   },
                   {
-                    "type": "SYMBOL",
-                    "name": "paragraph"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "paragraph"
+                      },
+                      {
+                        "type": "BLANK"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_block"
+                    }
                   }
                 ]
               },
               {
-                "type": "BLANK"
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "blank_line"
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "_block"
+                    }
+                  }
+                ]
               }
             ]
-          },
-          {
-            "type": "REPEAT",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_block"
-            }
           }
         ]
       }
@@ -7318,22 +7339,6 @@
         }
       ]
     },
-    "task_list_marker_checked": {
-      "type": "PREC",
-      "value": 1,
-      "content": {
-        "type": "PATTERN",
-        "value": "\\[[xX]\\]"
-      }
-    },
-    "task_list_marker_unchecked": {
-      "type": "PREC",
-      "value": 1,
-      "content": {
-        "type": "PATTERN",
-        "value": "\\[[ \\t]\\]"
-      }
-    },
     "pipe_table": {
       "type": "PREC_RIGHT",
       "value": 0,
@@ -8411,6 +8416,14 @@
     {
       "type": "SYMBOL",
       "name": "_list_marker_dot_dont_interrupt"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "task_list_marker_checked"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "task_list_marker_unchecked"
     },
     {
       "type": "SYMBOL",

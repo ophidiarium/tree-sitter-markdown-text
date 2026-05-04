@@ -144,6 +144,30 @@ Trailing paragraph.
           (terminator))))))
 
 ================================================================================
+Task marker requires following whitespace
+================================================================================
+- [x]foo
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (list_item
+        (list_marker_minus)
+        (paragraph
+          (inline
+            (link
+              (link_label))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
+
+================================================================================
 Mixed list: task and non-task items coexist
 ================================================================================
 - [x] done

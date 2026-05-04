@@ -642,8 +642,10 @@ export default grammar({
     ),
     _task_list_item_content: ($) => prec(1, seq(
       choice($.task_list_marker_checked, $.task_list_marker_unchecked),
-      optional(seq($._whitespace, $.paragraph)),
-      repeat($._block),
+      choice(
+        seq($._whitespace, optional($.paragraph), repeat($._block)),
+        seq($.blank_line, repeat($._block)),
+      ),
     )),
 
     _newline: ($) => seq(
@@ -869,7 +871,7 @@ export default grammar({
           optional($._whitespace), ')'),
         // full reference
         seq($.link_label),
-        // shortcut reference: just the single label (covered by image_shortcut below)
+        // shortcut reference (![alt] alone) is intentionally unsupported
       ),
     )),
 
@@ -989,9 +991,6 @@ export default grammar({
       $.operator_like,
     ),
 
-    task_list_marker_checked: ($) => prec(1, /\[[xX]\]/),
-    task_list_marker_unchecked: ($) => prec(1, /\[[ \t]\]/),
-
     pipe_table: ($) => prec.right(seq(
       $._pipe_table_start,
       alias($.pipe_table_row, $.pipe_table_header),
@@ -1104,6 +1103,8 @@ export default grammar({
     $._list_marker_star_dont_interrupt,
     $._list_marker_parenthesis_dont_interrupt,
     $._list_marker_dot_dont_interrupt,
+    $.task_list_marker_checked,
+    $.task_list_marker_unchecked,
     $._fenced_code_block_start_backtick,
     $._fenced_code_block_start_tilde,
     $._blank_line_start,
