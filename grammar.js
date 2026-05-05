@@ -359,7 +359,7 @@ export default grammar({
       $.footnote_label,
       ':',
       optional($._whitespace),
-      alias($._inline_content_line, $.inline),
+      optional(alias($._inline_content_line, $.inline)),
     ),
     _footnote_definition_continuation: ($) => choice(
       prec.dynamic(1, seq(
@@ -525,9 +525,9 @@ export default grammar({
       ), $.paragraph),
       choice($._newline, $._eof),
     ),
-    _callout_marker_open: ($) => token(prec(3, '[!')),
+    _callout_marker_open: ($) => seq('[', '!'),
     _callout_marker_close: ($) => ']',
-    _callout_type: ($) => /[A-Z]+/,
+    _callout_type: ($) => choice('NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'),
 
     list: ($) => prec.right(choice(
       $._list_plus,
@@ -1152,6 +1152,8 @@ export default grammar({
     [$.footnote_label, $._text_inline_no_link],
     // Inline-content conflicts.
     [$.link_label, $.bracket],
+    [$.link_label, $._callout_header_paragraph, $.bracket],
+    [$.link_label, $._callout_marker_open, $.bracket],
     [$.footnote_label, $.bracket],
     [$.footnote_reference, $.bracket],
     [$.link, $.bracket],

@@ -97,6 +97,32 @@ Trailing paragraph.
           (terminator))))))
 
 ================================================================================
+Footnote definition with empty first line
+================================================================================
+[^id]:
+  body line
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (footnote_definition
+      (footnote_label
+        (footnote_label_open))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
 Link reference definition is not mistaken for a footnote definition
 ================================================================================
 [foo]: https://example.com

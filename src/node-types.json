@@ -316,6 +316,11 @@
     "fields": {}
   },
   {
+    "type": "callout_type",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "code_fence_content",
     "named": true,
     "fields": {},
@@ -2035,11 +2040,27 @@
     "named": false
   },
   {
-    "type": "[",
+    "type": "CAUTION",
     "named": false
   },
   {
-    "type": "[!",
+    "type": "IMPORTANT",
+    "named": false
+  },
+  {
+    "type": "NOTE",
+    "named": false
+  },
+  {
+    "type": "TIP",
+    "named": false
+  },
+  {
+    "type": "WARNING",
+    "named": false
+  },
+  {
+    "type": "[",
     "named": false
   },
   {
@@ -2108,10 +2129,6 @@
   },
   {
     "type": "block_quote_marker",
-    "named": true
-  },
-  {
-    "type": "callout_type",
     "named": true
   },
   {

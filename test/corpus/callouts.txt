@@ -70,7 +70,7 @@ Trailing paragraph.
               (terminator))))))))
 
 ================================================================================
-Any uppercase word after [! becomes a callout type
+Unsupported alert marker stays plain block quote
 ================================================================================
 > [!UNKNOWN]
 > body
@@ -81,16 +81,14 @@ Trailing paragraph.
 (document
   (section
     (block_quote
-      (callout
-        (block_quote_marker)
-        (callout_marker_open)
-        callout_type: (callout_type)
-        (callout_marker_close)
-        (block_continuation)
-        (paragraph
-          (inline
-            (text_span
-              (word_token))))))
+      (block_quote_marker)
+      (paragraph
+        (inline
+          (link
+            (link_label))
+          (block_continuation)
+          (text_span
+            (word_token)))))
     (blank_line)
     (paragraph
       (inline
