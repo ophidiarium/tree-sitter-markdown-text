@@ -68,6 +68,8 @@ typedef enum {
     LIST_MARKER_DOT_DONT_INTERRUPT,
     TASK_LIST_MARKER_CHECKED,
     TASK_LIST_MARKER_UNCHECKED,
+    MATH_INLINE_OPEN_DELIMITER,
+    MATH_INLINE_CLOSE_DELIMITER,
     FENCED_CODE_BLOCK_START_BACKTICK,
     FENCED_CODE_BLOCK_START_TILDE,
     BLANK_LINE_START,
@@ -213,6 +215,8 @@ static const bool paragraph_interrupt_symbols[] = {
     false, // LIST_MARKER_DOT_DONT_INTERRUPT,
     false, // TASK_LIST_MARKER_CHECKED,
     false, // TASK_LIST_MARKER_UNCHECKED,
+    false, // MATH_INLINE_OPEN_DELIMITER,
+    false, // MATH_INLINE_CLOSE_DELIMITER,
     true,  // FENCED_CODE_BLOCK_START_BACKTICK,
     true,  // FENCED_CODE_BLOCK_START_TILDE,
     true,  // BLANK_LINE_START,
@@ -607,6 +611,65 @@ static bool parse_task_list_marker(Scanner *s, TSLexer *lexer,
         lexer->result_symbol = TASK_LIST_MARKER_CHECKED;
     }
     return true;
+}
+// NOLINTEND(readability-identifier-length)
+
+
+// NOLINTBEGIN(readability-identifier-length)
+static bool parse_math_inline_delimiter(Scanner *s, TSLexer *lexer,
+                                        const bool *valid_symbols) {
+    if (!(valid_symbols[MATH_INLINE_OPEN_DELIMITER] ||
+          valid_symbols[MATH_INLINE_CLOSE_DELIMITER]) ||
+        lexer->lookahead != '$') {
+        return false;
+    }
+
+    uint8_t start_indentation = s->indentation;
+    uint8_t start_column = s->column;
+    advance(s, lexer);
+
+    if (valid_symbols[MATH_INLINE_OPEN_DELIMITER] &&
+        lexer->lookahead != '$' && lexer->lookahead != ' ' &&
+        lexer->lookahead != '\t' && lexer->lookahead != '\n' &&
+        lexer->lookahead != '\r' && !lexer->eof(lexer)) {
+        uint8_t delimiter_indentation = s->indentation;
+        uint8_t delimiter_column = s->column;
+        mark_end(s, lexer);
+
+        int32_t previous = 0;
+        while (lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
+               !lexer->eof(lexer)) {
+            if (lexer->lookahead == '$') {
+                advance(s, lexer);
+                bool previous_is_space = false;
+                if (previous == ' ' || previous == '\t') {
+                    previous_is_space = true;
+                }
+                if (!previous_is_space && !is_ascii_digit(lexer->lookahead)) {
+                    s->indentation = delimiter_indentation;
+                    s->column = delimiter_column;
+                    lexer->result_symbol = MATH_INLINE_OPEN_DELIMITER;
+                    return true;
+                }
+                break;
+            }
+            previous = lexer->lookahead;
+            advance(s, lexer);
+        }
+        s->indentation = start_indentation;
+        s->column = start_column;
+        return false;
+    }
+
+    if (valid_symbols[MATH_INLINE_CLOSE_DELIMITER] &&
+        !is_ascii_digit(lexer->lookahead)) {
+        lexer->result_symbol = MATH_INLINE_CLOSE_DELIMITER;
+        return true;
+    }
+
+    s->indentation = start_indentation;
+    s->column = start_column;
+    return false;
 }
 // NOLINTEND(readability-identifier-length)
 
@@ -1644,6 +1707,8 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                 return parse_minus(s, lexer, valid_symbols);
             case '[':
                 return parse_task_list_marker(s, lexer, valid_symbols);
+            case '$':
+                return parse_math_inline_delimiter(s, lexer, valid_symbols);
             case '<':
                 // A < could mark the beginning of a html block
                 return parse_html_block(s, lexer, valid_symbols);

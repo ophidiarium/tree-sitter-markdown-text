@@ -2,6 +2,7 @@
 Block image with simple destination
 ================================================================================
 ![alt text](./pic.png)
+
 Trailing paragraph.
 --------------------------------------------------------------------------------
 
@@ -10,6 +11,37 @@ Trailing paragraph.
     (image_block
       (link_label)
       (link_destination))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Image followed by continuation stays paragraph
+================================================================================
+![alt](./pic.png)
+continued text.
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (image
+          (link_label)
+          (link_destination))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))
+    (blank_line)
     (paragraph
       (inline
         (text_span
@@ -22,6 +54,7 @@ Trailing paragraph.
 Block image with external URL
 ================================================================================
 ![Logo](https://example.com/logo.svg)
+
 Trailing paragraph.
 --------------------------------------------------------------------------------
 
@@ -30,6 +63,7 @@ Trailing paragraph.
     (image_block
       (link_label)
       (link_destination))
+    (blank_line)
     (paragraph
       (inline
         (text_span

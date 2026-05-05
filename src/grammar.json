@@ -4035,10 +4035,6 @@
               },
               {
                 "type": "SYMBOL",
-                "name": "_soft_line_break"
-              },
-              {
-                "type": "SYMBOL",
                 "name": "_eof"
               }
             ]
@@ -6444,7 +6440,7 @@
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
-              "name": "_math_inline_delimiter"
+              "name": "_math_inline_open_delimiter"
             },
             "named": true,
             "value": "math_inline_delimiter"
@@ -6452,8 +6448,8 @@
           {
             "type": "ALIAS",
             "content": {
-              "type": "PATTERN",
-              "value": "[^$\\n\\r]+"
+              "type": "SYMBOL",
+              "name": "_math_inline_content"
             },
             "named": true,
             "value": "math_inline_content"
@@ -6462,7 +6458,7 @@
             "type": "ALIAS",
             "content": {
               "type": "SYMBOL",
-              "name": "_math_inline_delimiter"
+              "name": "_math_inline_close_delimiter"
             },
             "named": true,
             "value": "math_inline_delimiter"
@@ -6470,16 +6466,9 @@
         ]
       }
     },
-    "_math_inline_delimiter": {
-      "type": "TOKEN",
-      "content": {
-        "type": "PREC",
-        "value": 1,
-        "content": {
-          "type": "STRING",
-          "value": "$"
-        }
-      }
+    "_math_inline_content": {
+      "type": "PATTERN",
+      "value": "[^$\\s\\n\\r](?:[^$\\n\\r]*[^$\\s\\n\\r])?"
     },
     "footnote_reference": {
       "type": "SEQ",
@@ -6753,13 +6742,8 @@
                 ]
               },
               {
-                "type": "SEQ",
-                "members": [
-                  {
-                    "type": "SYMBOL",
-                    "name": "link_label"
-                  }
-                ]
+                "type": "SYMBOL",
+                "name": "link_label"
               }
             ]
           }
@@ -8473,6 +8457,14 @@
     {
       "type": "SYMBOL",
       "name": "task_list_marker_unchecked"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_math_inline_open_delimiter"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_math_inline_close_delimiter"
     },
     {
       "type": "SYMBOL",

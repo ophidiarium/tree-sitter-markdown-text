@@ -609,6 +609,42 @@ Trailing paragraph.
           (terminator))))))
 
 ================================================================================
+Currency dollars are plain prose
+================================================================================
+Price is $20,000 and $30,000 today.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like)
+          (numeric_token)
+          (separator)
+          (numeric_token))
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like)
+          (numeric_token)
+          (separator)
+          (numeric_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
 Footnote reference
 ================================================================================
 See note[^1] for details.

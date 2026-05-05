@@ -437,7 +437,7 @@ export default grammar({
       optional($._whitespace),
       ')',
       optional($._whitespace),
-      choice($._newline, $._soft_line_break, $._eof),
+      choice($._newline, $._eof),
     )),
 
     // MDX JSX block. Shallow block-level recognizer: a line that begins
@@ -843,11 +843,11 @@ export default grammar({
 
     // Inline math ($...$). Excludes $$ (which is math_block).
     math_inline: ($) => prec.dynamic(3, seq(
-      alias($._math_inline_delimiter, $.math_inline_delimiter),
-      alias(/[^$\n\r]+/, $.math_inline_content),
-      alias($._math_inline_delimiter, $.math_inline_delimiter),
+      alias($._math_inline_open_delimiter, $.math_inline_delimiter),
+      alias($._math_inline_content, $.math_inline_content),
+      alias($._math_inline_close_delimiter, $.math_inline_delimiter),
     )),
-    _math_inline_delimiter: ($) => token(prec(1, '$')),
+    _math_inline_content: ($) => new RustRegex('[^$\\s\\n\\r](?:[^$\\n\\r]*[^$\\s\\n\\r])?'),
 
     // Footnote reference [^id]. Distinct from footnote_definition which has
     // `:` immediately after the label. Uses a combined `[^` token to beat
@@ -871,9 +871,10 @@ export default grammar({
         seq('(', optional($._whitespace), optional($.link_destination),
           optional(seq($._whitespace, $.link_title)),
           optional($._whitespace), ')'),
-        // full reference
-        seq($.link_label),
-        // shortcut reference (![alt] alone) is intentionally unsupported
+        // full reference: ![alt][label]
+        $.link_label,
+        // Shortcut (`![alt]`) and collapsed (`![alt][]`) image references are
+        // intentionally unsupported by this simplified image rule.
       ),
     )),
 
@@ -1107,6 +1108,8 @@ export default grammar({
     $._list_marker_dot_dont_interrupt,
     $.task_list_marker_checked,
     $.task_list_marker_unchecked,
+    $._math_inline_open_delimiter,
+    $._math_inline_close_delimiter,
     $._fenced_code_block_start_backtick,
     $._fenced_code_block_start_tilde,
     $._blank_line_start,

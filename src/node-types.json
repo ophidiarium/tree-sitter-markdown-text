@@ -1233,11 +1233,6 @@
     }
   },
   {
-    "type": "math_inline_delimiter",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "mdx_jsx_block",
     "named": true,
     "fields": {},
@@ -2177,6 +2172,10 @@
   },
   {
     "type": "math_inline_content",
+    "named": true
+  },
+  {
+    "type": "math_inline_delimiter",
     "named": true
   },
   {
