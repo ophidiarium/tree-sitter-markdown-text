@@ -772,12 +772,14 @@ export default grammar({
       // `$$` appearing inline (outside a math_block context) classifies as operator_like.
       alias($._dollar_dollar_inline, '$$'),
       $._unicode_symbol_run,
+      $._unicode_punctuation_run,
       '=', '+', '-', '*', '/', '|', '&',
       // Remaining ASCII punctuation not covered by other classes.
       '"', '#', '$', '%', '\'', '@', '\\', '^', '_', '`', '~',
     ),
     _dollar_dollar_inline: ($) => token(prec(3, '$$')),
     _unicode_symbol_run: ($) => new RustRegex('[\\p{S}&&[^\\x00-\\x7F]]+'),
+    _unicode_punctuation_run: ($) => new RustRegex('[\\p{P}&&[^\\x00-\\x7F]]+'),
 
     // --- §3.2 structural inline nodes -----------------------------------
 

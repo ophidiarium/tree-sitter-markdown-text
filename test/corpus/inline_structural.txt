@@ -82,6 +82,33 @@ Trailing paragraph.
           (terminator))))))
 
 ================================================================================
+Unicode punctuation in prose
+================================================================================
+A — “quote”、end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like))
+        (text_span
+          (operator_like)
+          (word_token)
+          (operator_like)
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
 Identifier-like variants
 ================================================================================
 PascalCase camelCase snake_case _private v1 2cool.

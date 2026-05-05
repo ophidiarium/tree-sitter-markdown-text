@@ -6091,6 +6091,10 @@
           "name": "_unicode_symbol_run"
         },
         {
+          "type": "SYMBOL",
+          "name": "_unicode_punctuation_run"
+        },
+        {
           "type": "STRING",
           "value": "="
         },
@@ -6178,6 +6182,10 @@
     "_unicode_symbol_run": {
       "type": "PATTERN",
       "value": "[\\p{S}&&[^\\x00-\\x7F]]+"
+    },
+    "_unicode_punctuation_run": {
+      "type": "PATTERN",
+      "value": "[\\p{P}&&[^\\x00-\\x7F]]+"
     },
     "inline_code": {
       "type": "CHOICE",
