@@ -1,0 +1,99 @@
+================================================================================
+Math block with content
+================================================================================
+$$
+x = 1
+$$
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (math_block
+      (math_block_delimiter)
+      (math_block_content)
+      (math_block_delimiter))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Empty math block
+================================================================================
+$$
+$$
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (math_block
+      (math_block_delimiter)
+      (math_block_delimiter))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Multi-line math block
+================================================================================
+$$
+E = mc^2
+F = ma
+$$
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (math_block
+      (math_block_delimiter)
+      (math_block_content)
+      (math_block_delimiter))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Dollar-dollar inside paragraph does not start math block
+================================================================================
+This paragraph has $$ embedded in it.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

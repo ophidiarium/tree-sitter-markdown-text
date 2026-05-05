@@ -1,0 +1,112 @@
+================================================================================
+MDX JSX self-closing block
+================================================================================
+<Component prop="value"/>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (mdx_jsx_block
+      (mdx_jsx_open_tag))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+All-caps custom tag is MDX JSX block
+================================================================================
+<FOO>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (mdx_jsx_block
+      (mdx_jsx_open_tag))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+MDX JSX open and close tags on separate lines
+================================================================================
+<MyBlock>
+body
+</MyBlock>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (mdx_jsx_block
+      (mdx_jsx_open_tag))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (mdx_jsx_inline
+          (mdx_jsx_close_tag))))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Lowercase HTML tag stays as html_block
+================================================================================
+<div class="x">body</div>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (html_block
+      (block_continuation)
+      (blank_line))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+MDX JSX block with nested attribute expression
+================================================================================
+<Component prop={{ key: 'value' }}/>
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (mdx_jsx_block
+      (mdx_jsx_open_tag))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

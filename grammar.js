@@ -1,15 +1,34 @@
-// Markdown block-structure grammar for tree-sitter.
+// Markdown grammar for tree-sitter.
 //
 // Derived from https://github.com/tree-sitter-grammars/tree-sitter-markdown
-// (the `split_parser` branch, `tree-sitter-markdown` block grammar + `common/common.js`).
+// (the `split_parser` branch, `tree-sitter-markdown` block grammar + `common/common.js`),
+// extended with structured inline parsing so consumers can query `(emphasis)`,
+// `(link)`, `(word_token)`, etc. directly under `(inline)`.
 //
-// Only concerns block structure per the CommonMark Spec
-// (https://spec.commonmark.org/0.30/#blocks-and-inlines). Inline content
-// (emphasis, links, code spans) is exposed as an opaque `inline` leaf.
+// Covers CommonMark Spec (https://spec.commonmark.org/0.30/) block structure
+// plus the following extensions always enabled:
+//  - YAML front matter, TOML front matter
+//  - GFM pipe tables
+//  - GFM task lists (promoted to task_list_item)
+//  - GFM alerts promoted to callout
+//  - GFM strikethrough
+//  - Pandoc display math ($$), Pandoc inline math ($)
+//  - Generic container directives (:::)
+//  - Footnote definitions and references
+//  - Image blocks (paragraph with a single image)
+//  - MDX JSX blocks and inline elements (shallow)
 //
-// Extensions always enabled: YAML front matter, TOML front matter, pipe tables,
-// GFM task lists. Other upstream extensions (tags, wiki links, LaTeX, strikethrough)
-// are inline-only or niche and are intentionally excluded.
+// Inline content emitted under paragraph/heading/footnote bodies is
+// structured into the nodes required by mehen's Required Markdown AST Model:
+// text_span, word_token, numeric_token, identifier_like_token, path_like_token,
+// terminator, separator, bracket, operator_like, inline_code, emphasis,
+// strong, strikethrough, link, image, autolink, html_inline, mdx_jsx_inline,
+// math_inline, footnote_reference.
+//
+// Known simplifications vs full CommonMark: emphasis/strong use simple paired
+// delimiters rather than the full left/right-flanking algorithm; MDX JSX is
+// shallow; pipe-table cells are not reclassified into inline tokens; inline
+// code supports only 1- or 2-backtick runs.
 
 /// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
@@ -23,6 +42,11 @@ const PUNCTUATION_CHARACTERS_ARRAY = [
   '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
 ];
 const PRECEDENCE_LEVEL_LINK = 10;
+const PRECEDENCE_LEVEL_FOOTNOTE = 11;
+const PRECEDENCE_LEVEL_IMAGE = 11;
+const PRECEDENCE_LEVEL_MATH_BLOCK = 12;
+const PRECEDENCE_LEVEL_DIRECTIVE_BLOCK = 12;
+const PRECEDENCE_LEVEL_IMAGE_BLOCK = 12;
 
 export default grammar({
   name: 'markdown',
@@ -134,7 +158,12 @@ export default grammar({
       $.fenced_code_block,
       $.blank_line,
       $.html_block,
+      $.mdx_jsx_block,
       $.link_reference_definition,
+      $.footnote_definition,
+      $.math_block,
+      $.directive_block,
+      $.image_block,
       $.pipe_table,
     ),
     section: ($) => choice($._section1, $._section2, $._section3, $._section4, $._section5, $._section6),
@@ -223,7 +252,7 @@ export default grammar({
     )),
     _atx_heading_content: ($) => prec(1, seq(
       optional($._whitespace),
-      field('heading_content', alias($._line, $.inline)),
+      field('heading_content', alias($._inline_content_line, $.inline)),
     )),
 
     // A setext heading. The heading level is the underline kind, exposed as a
@@ -308,6 +337,129 @@ export default grammar({
     _html_block_6: ($) => build_html_block($, $._html_block_6_start, seq($._newline, $.blank_line)),
     _html_block_7: ($) => build_html_block($, $._html_block_7_start, seq($._newline, $.blank_line)),
 
+    // A footnote definition. Modeled after `link_reference_definition`.
+    // Syntax: `[^label]: definition text`. The `^` immediately after `[`
+    // disambiguates it from a regular link reference.
+    //
+    // https://github.github.com/gfm/#footnotes (not in the base spec, widely
+    // supported extension).
+    footnote_definition: ($) => choice(
+      prec.dynamic(PRECEDENCE_LEVEL_FOOTNOTE + 1, seq(
+        $._footnote_definition_start,
+        $._newline,
+        $._footnote_definition_continuation,
+      )),
+      prec.dynamic(PRECEDENCE_LEVEL_FOOTNOTE, seq(
+        $._footnote_definition_start,
+        choice($._newline, $._eof),
+      )),
+    ),
+    _footnote_definition_start: ($) => seq(
+      optional($._whitespace),
+      $.footnote_label,
+      ':',
+      optional($._whitespace),
+      optional(alias($._inline_content_line, $.inline)),
+    ),
+    _footnote_definition_continuation: ($) => choice(
+      prec.dynamic(1, seq(
+        $._whitespace,
+        alias($._inline_content_line, $.inline),
+        $._newline,
+        $._footnote_definition_continuation,
+      )),
+      seq(
+        $._whitespace,
+        alias($._inline_content_line, $.inline),
+        choice($._newline, $._eof),
+      ),
+    ),
+    footnote_label: ($) => seq(alias($._footnote_ref_open, $.footnote_label_open), repeat1(choice(
+      $._word,
+      $.backslash_escape,
+      punctuation_without($, ['[', ']', '^']),
+    )), ']'),
+
+    // A math block (Pandoc / GitLab / KaTeX display math).
+    // Syntax:
+    //   $$
+    //   formula
+    //   $$
+    // Pure grammar implementation: the opening `$$` and closing `$$` are each
+    // required to sit alone on their own line. The literal `$$` token (two
+    // adjacent `$` characters) beats the single `$` punctuation that would
+    // otherwise be consumed by `_line` because tree-sitter prefers the longer
+    // token at a given lex position.
+    math_block: ($) => prec.dynamic(PRECEDENCE_LEVEL_MATH_BLOCK, seq(
+      alias($._math_block_delimiter, $.math_block_delimiter),
+      $._newline,
+      optional($.math_block_content),
+      alias($._math_block_delimiter, $.math_block_delimiter),
+      choice($._newline, $._eof),
+    )),
+    _math_block_delimiter: ($) => token(prec(4, '$$')),
+    math_block_content: ($) => prec.right(repeat1(choice($._line, $._newline))),
+
+    // A directive block (`:::name ... :::`). Implemented following the syntax
+    // used by remark-directive / MyST / Pandoc fenced divs: a line opening
+    // with three or more colons followed by an optional name, content lines,
+    // then a matching closing line of colons. For simplicity the opening and
+    // closing use a fixed `:::` literal; longer runs fall back to the
+    // paragraph rule.
+    directive_block: ($) => prec.dynamic(PRECEDENCE_LEVEL_DIRECTIVE_BLOCK, seq(
+      alias($._directive_block_delimiter, $.directive_block_delimiter),
+      optional($._whitespace),
+      optional($.directive_name),
+      $._newline,
+      optional($.directive_block_content),
+      alias($._directive_block_delimiter, $.directive_block_delimiter),
+      choice($._newline, $._eof),
+    )),
+    _directive_block_delimiter: ($) => ':::',
+    directive_name: ($) => prec.right(repeat1(choice(
+      $._word,
+      punctuation_without($, [':']),
+    ))),
+    directive_block_content: ($) => prec.right(repeat1(choice($._line, $._newline))),
+
+    // A block-level image (paragraph consisting of a single image).
+    // Syntax: `![alt](destination)` on its own line.
+    // Kept intentionally minimal: title strings are omitted to keep the rule
+    // unambiguous with `link_reference_definition`. If a title is present the
+    // paragraph falls back to ordinary `paragraph` with inline content.
+    image_block: ($) => prec.dynamic(PRECEDENCE_LEVEL_IMAGE_BLOCK, seq(
+      optional($._whitespace),
+      '!',
+      $.link_label,
+      '(',
+      optional($._whitespace),
+      optional($.link_destination),
+      optional($._whitespace),
+      ')',
+      optional($._whitespace),
+      choice($._newline, $._eof),
+    )),
+
+    // MDX JSX block. Shallow block-level recognizer: a line that begins
+    // (after optional whitespace) with an MDX-style JSX tag (<Name ...>,
+    // <Name ... />, or </Name>) is surfaced as `mdx_jsx_block`.
+    // Paired matching of open/close tags is not required at the grammar
+    // level; consumers can validate. Full JSX/expression semantics are out
+    // of scope — see docs/textlint-mapping.md.
+    mdx_jsx_block: ($) => prec(3, seq(
+      optional($._whitespace),
+      choice(
+        alias($._mdx_jsx_open_block_tag, $.mdx_jsx_open_tag),
+        alias($._mdx_jsx_close_block_tag, $.mdx_jsx_close_tag),
+      ),
+      optional($._whitespace),
+      choice($._newline, $._eof),
+    )),
+    _mdx_jsx_open_block_tag: ($) => token(prec(5, new RegExp(
+      '<[A-Z][A-Za-z0-9.]*(\\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\\s*=\\s*("[^"]*"|\'[^\']*\'|\\{([^{}]|\\{[^{}]*\\})*\\}|[^\\s"\'=<>`{}]+))?)*\\s*/?>',
+    ))),
+    _mdx_jsx_close_block_tag: ($) => token(prec(5, /<\/[A-Z][A-Za-z0-9.]*\s*>/)),
+
     // A link reference definition.
     //
     // https://github.github.com/gfm/#link-reference-definitions
@@ -332,7 +484,7 @@ export default grammar({
     // A paragraph.
     //
     // https://github.github.com/gfm/#paragraphs
-    paragraph: ($) => seq(alias(repeat1(choice($._line, $._soft_line_break)), $.inline), choice($._newline, $._eof)),
+    paragraph: ($) => seq(alias($._inline_content, $.inline), choice($._newline, $._eof)),
 
     // A blank line including the following newline. Publicly named so metrics
     // like mehen's BLANK can target it directly.
@@ -342,13 +494,40 @@ export default grammar({
 
     // CONTAINER BLOCKS
 
-    block_quote: ($) => seq(
+    // A block quote. If its first paragraph starts with `[!NOTE]`,
+    // `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, or `[!CAUTION]` (GFM alerts),
+    // the whole node is aliased to `callout` with a `callout_type` child.
+    block_quote: ($) => choice(
+      alias($._callout, $.callout),
+      $._plain_block_quote,
+    ),
+    _plain_block_quote: ($) => seq(
       alias($._block_quote_start, $.block_quote_marker),
       optional($.block_continuation),
       repeat($._block),
       $._block_close,
       optional($.block_continuation),
     ),
+    _callout: ($) => prec.dynamic(1, seq(
+      alias($._block_quote_start, $.block_quote_marker),
+      optional($.block_continuation),
+      $._callout_header_paragraph,
+      repeat($._block),
+      $._block_close,
+      optional($.block_continuation),
+    )),
+    _callout_header_paragraph: ($) => seq(
+      alias(seq(
+        alias($._callout_marker_open, $.callout_marker_open),
+        field('callout_type', alias($._callout_type, $.callout_type)),
+        alias($._callout_marker_close, $.callout_marker_close),
+        optional(alias($._inline_content_line, $.inline)),
+      ), $.paragraph),
+      choice($._newline, $._eof),
+    ),
+    _callout_marker_open: ($) => seq('[', '!'),
+    _callout_marker_close: ($) => ']',
+    _callout_type: ($) => choice('NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'),
 
     list: ($) => prec.right(choice(
       $._list_plus,
@@ -357,11 +536,26 @@ export default grammar({
       $._list_dot,
       $._list_parenthesis,
     )),
-    _list_plus: ($) => prec.right(repeat1(alias($._list_item_plus, $.list_item))),
-    _list_minus: ($) => prec.right(repeat1(alias($._list_item_minus, $.list_item))),
-    _list_star: ($) => prec.right(repeat1(alias($._list_item_star, $.list_item))),
-    _list_dot: ($) => prec.right(repeat1(alias($._list_item_dot, $.list_item))),
-    _list_parenthesis: ($) => prec.right(repeat1(alias($._list_item_parenthesis, $.list_item))),
+    _list_plus: ($) => prec.right(repeat1(choice(
+      alias($._task_list_item_plus, $.task_list_item),
+      alias($._list_item_plus, $.list_item),
+    ))),
+    _list_minus: ($) => prec.right(repeat1(choice(
+      alias($._task_list_item_minus, $.task_list_item),
+      alias($._list_item_minus, $.list_item),
+    ))),
+    _list_star: ($) => prec.right(repeat1(choice(
+      alias($._task_list_item_star, $.task_list_item),
+      alias($._list_item_star, $.list_item),
+    ))),
+    _list_dot: ($) => prec.right(repeat1(choice(
+      alias($._task_list_item_dot, $.task_list_item),
+      alias($._list_item_dot, $.list_item),
+    ))),
+    _list_parenthesis: ($) => prec.right(repeat1(choice(
+      alias($._task_list_item_parenthesis, $.task_list_item),
+      alias($._list_item_parenthesis, $.list_item),
+    ))),
     list_marker_plus: ($) => choice($._list_marker_plus, $._list_marker_plus_dont_interrupt),
     list_marker_minus: ($) => choice($._list_marker_minus, $._list_marker_minus_dont_interrupt),
     list_marker_star: ($) => choice($._list_marker_star, $._list_marker_star_dont_interrupt),
@@ -402,6 +596,41 @@ export default grammar({
       $._block_close,
       optional($.block_continuation),
     ),
+    _task_list_item_plus: ($) => seq(
+      $.list_marker_plus,
+      optional($.block_continuation),
+      $._task_list_item_content,
+      $._block_close,
+      optional($.block_continuation),
+    ),
+    _task_list_item_minus: ($) => seq(
+      $.list_marker_minus,
+      optional($.block_continuation),
+      $._task_list_item_content,
+      $._block_close,
+      optional($.block_continuation),
+    ),
+    _task_list_item_star: ($) => seq(
+      $.list_marker_star,
+      optional($.block_continuation),
+      $._task_list_item_content,
+      $._block_close,
+      optional($.block_continuation),
+    ),
+    _task_list_item_dot: ($) => seq(
+      $.list_marker_dot,
+      optional($.block_continuation),
+      $._task_list_item_content,
+      $._block_close,
+      optional($.block_continuation),
+    ),
+    _task_list_item_parenthesis: ($) => seq(
+      $.list_marker_parenthesis,
+      optional($.block_continuation),
+      $._task_list_item_content,
+      $._block_close,
+      optional($.block_continuation),
+    ),
     _list_item_content: ($) => choice(
       prec(1, seq(
         $.blank_line,
@@ -410,13 +639,14 @@ export default grammar({
         optional($.block_continuation),
       )),
       repeat1($._block),
-      prec(1, seq(
-        choice($.task_list_marker_checked, $.task_list_marker_unchecked),
-        $._whitespace,
-        $.paragraph,
-        repeat($._block),
-      )),
     ),
+    _task_list_item_content: ($) => prec(1, seq(
+      choice($.task_list_marker_checked, $.task_list_marker_unchecked),
+      choice(
+        seq($._whitespace, optional($.paragraph), repeat($._block)),
+        seq($.blank_line, repeat($._block)),
+      ),
+    )),
 
     _newline: ($) => seq(
       $._line_ending,
@@ -434,8 +664,335 @@ export default grammar({
     ),
     _whitespace: ($) => /[ \t]+/,
 
-    task_list_marker_checked: ($) => prec(1, /\[[xX]\]/),
-    task_list_marker_unchecked: ($) => prec(1, /\[[ \t]\]/),
+    // ---------------------------------------------------------------------
+    // INLINE CONTENT
+    //
+    // `_inline_content` is the rule used wherever block rules previously
+    // emitted `alias(_line, $.inline)` (paragraph, ATX heading content,
+    // footnote definition body). It emits a sequence of classified tokens
+    // (word_token / numeric_token / identifier_like_token / path_like_token
+    // and punctuation-class nodes) plus inline structural nodes
+    // (inline_code, emphasis, strong, strikethrough, link, image, autolink,
+    // html_inline, mdx_jsx_inline, math_inline, footnote_reference).
+    //
+    // The outer `inline` wrapper is kept so existing queries that match
+    // `(paragraph (inline))` continue to work. Consumers targeting
+    // `(inline (emphasis))` etc. now get structured children.
+    // ---------------------------------------------------------------------
+
+    _inline_content: ($) => prec.right(repeat1(choice(
+      $._inline_element,
+      $._soft_line_break,
+    ))),
+    // Single-line inline content (no soft line breaks) — used for contexts
+    // like ATX headings, footnote definition bodies, and similar where the
+    // content must fit on one logical line.
+    _inline_content_line: ($) => prec.right(repeat1($._inline_element)),
+    _inline_element: ($) => choice(
+      $._whitespace,
+      $.inline_code,
+      $.autolink,
+      $.html_inline,
+      $.mdx_jsx_inline,
+      $.math_inline,
+      $.image,
+      $.footnote_reference,
+      $.link,
+      $.strong,
+      $.emphasis,
+      $.strikethrough,
+      $.text_span,
+    ),
+
+    // A text_span groups a run of classified tokens and punctuation-class
+    // nodes with no intervening structural inline nodes. This gives
+    // consumers a single node to query for prose chunks while still
+    // preserving the inner token classification required by §3.2/§3.3.
+    text_span: ($) => prec.right(repeat1(choice(
+      $.numeric_token,
+      $.path_like_token,
+      $.identifier_like_token,
+      $.word_token,
+      $.terminator,
+      $.separator,
+      $.bracket,
+      $.operator_like,
+    ))),
+
+    // --- §3.2 token classifiers -----------------------------------------
+
+    // Pure alphabetic run (letters only). Simple word in prose.
+    word_token: ($) => new RustRegex('\\p{L}+'),
+
+    // Numeric tokens: integers, decimals, multi-dot versions (1, 1.0, 1.2.3).
+    numeric_token: ($) => /[0-9]+(\.[0-9]+)*/,
+
+    // Identifier-like tokens: alnum runs with at least one underscore or at
+    // least one digit adjacent to letters (camelCase/snake_case). Requires
+    // anchoring to distinguish from plain word_token / numeric_token.
+    identifier_like_token: ($) => token(prec(1, choice(
+      // snake_case / underscored
+      /[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)+/,
+      /_[A-Za-z0-9]+([_][A-Za-z0-9]+)*/,
+      // camelCase / PascalCase
+      /[a-z]+[A-Z][A-Za-z0-9]*/,
+      /[A-Z][a-z]+[A-Z][A-Za-z0-9]*/,
+      // alnum mix (letter then digit or digit then letter)
+      /[A-Za-z]+[0-9]+[A-Za-z0-9]*/,
+      /[0-9]+[A-Za-z][A-Za-z0-9]*/,
+    ))),
+
+    // Path-like tokens: runs containing at least one slash between alnum
+    // segments, or dotted path with 2+ dots (e.g. a.b.c).
+    path_like_token: ($) => token(prec(2, choice(
+      // slashed path: foo/bar/baz, ./foo, ../foo, /foo
+      /(\.{1,2}\/|\/)?[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)+/,
+      // dotted path with 3+ segments (a.b.c, com.example.Foo)
+      /[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){2,}/,
+    ))),
+
+    // --- §3.3 punctuation classes ---------------------------------------
+
+    // Sentence terminators. Includes the specified Unicode codepoints.
+    terminator: ($) => choice('.', '?', '!', '\u3002', '\u2026'),
+
+    // Clause separators.
+    separator: ($) => choice(',', ';', ':'),
+
+    // Paired brackets (individual chars; pairing is structural in link/image/html rules).
+    bracket: ($) => choice('(', ')', '[', ']', '{', '}', '<', '>'),
+
+    // Operator-like punctuation. Covers spec-listed operators plus the
+    // remaining punctuation chars so every punctuation lexeme has a class.
+    // Non-ASCII symbol runes (emoji, currency marks, copyright signs, etc.)
+    // also land here so ordinary prose never falls into ERROR.
+    operator_like: ($) => choice(
+      // Multi-character operators (longer tokens first so lexer prefers them)
+      '::', '->', '=>',
+      // `$$` appearing inline (outside a math_block context) classifies as operator_like.
+      alias($._dollar_dollar_inline, '$$'),
+      $._unicode_symbol_run,
+      $._unicode_punctuation_run,
+      '=', '+', '-', '*', '/', '|', '&',
+      // Remaining ASCII punctuation not covered by other classes.
+      '"', '#', '$', '%', '\'', '@', '\\', '^', '_', '`', '~',
+    ),
+    _dollar_dollar_inline: ($) => token(prec(3, '$$')),
+    _unicode_symbol_run: ($) => new RustRegex('[\\p{S}&&[^\\x00-\\x7F]]+'),
+    _unicode_punctuation_run: ($) => new RustRegex('[\\p{P}&&[^\\x00-\\x7F]]+'),
+
+    // --- §3.2 structural inline nodes -----------------------------------
+
+    // Inline code. Supports delimiter runs of 1 or 2 backticks. The content
+    // is everything up to the matching run of the same length. A full
+    // CommonMark implementation handles arbitrarily long runs; two cases
+    // cover the overwhelming majority of real documents.
+    inline_code: ($) => choice(
+      seq(
+        alias($._backtick_1, $.inline_code_delimiter),
+        optional(alias(/[^`\n\r]+/, $.inline_code_content)),
+        alias($._backtick_1, $.inline_code_delimiter),
+      ),
+      seq(
+        alias($._backtick_2, $.inline_code_delimiter),
+        optional(alias(/([^`\n\r]|`[^`\n\r])+/, $.inline_code_content)),
+        alias($._backtick_2, $.inline_code_delimiter),
+      ),
+    ),
+    _backtick_1: ($) => token(prec(1, '`')),
+    _backtick_2: ($) => token(prec(2, '``')),
+
+    // Autolinks: <scheme:rest> and <email@host>.
+    autolink: ($) => choice(
+      seq('<', alias(/[A-Za-z][A-Za-z0-9+.\-]{1,31}:[^<> \t\n\r]+/, $.uri), '>'),
+      seq('<', alias(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+(\.[A-Za-z0-9\-]+)+/, $.email), '>'),
+    ),
+
+    // Raw HTML spans: opening tag, closing tag, self-closing, comment,
+    // CDATA, declaration, processing instruction. Attribute parsing is
+    // intentionally permissive.
+    html_inline: ($) => choice(
+      // Comment
+      alias(/<!--([^-]|-[^-]|--[^>])*-->/, $.html_comment),
+      // CDATA
+      alias(/<!\[CDATA\[([^\]]|\][^\]]|\]\][^>])*\]\]>/, $.html_cdata),
+      // Processing instruction
+      alias(/<\?([^?]|\?[^>])*\?>/, $.html_processing_instruction),
+      // Declaration
+      alias(/<![A-Z][^>]*>/, $.html_declaration),
+      // Open or self-closing tag. Lowercase-starting tags and all-caps tags
+      // are HTML; mixed-case uppercase-starting names fall through to MDX JSX.
+      alias(/<(?:[a-z][A-Za-z0-9-]*|[A-Z][A-Z0-9-]*)(\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/, $.html_open_tag),
+      // Closing tag
+      alias(/<\/(?:[a-z][A-Za-z0-9-]*|[A-Z][A-Z0-9-]*)\s*>/, $.html_close_tag),
+    ),
+
+    // MDX JSX inline. Shallow recognizer: matches <Name ...>, </Name>,
+    // <Name/>, and {expression} as opaque spans. Mixed-case names that start
+    // with an uppercase letter distinguish MDX JSX from all-caps HTML tags.
+    // Full MDX parsing is out of scope; see docs/textlint-mapping.md.
+    mdx_jsx_inline: ($) => choice(
+      alias(new RegExp([
+        '<[A-Z][A-Za-z0-9.]*[a-z][A-Za-z0-9.]*',
+        '(\\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*',
+        '(\\s*=\\s*("[^"]*"|\'[^\']*\'|\\{([^{}]|\\{[^{}]*\\})*\\}|[^\\s"\'=<>`{}]+))?)*\\s*/?>',
+      ].join('')), $.mdx_jsx_open_tag),
+      alias(/<\/[A-Z][A-Za-z0-9.]*[a-z][A-Za-z0-9.]*\s*>/, $.mdx_jsx_close_tag),
+      alias(/\{[^{}\n]*\}/, $.mdx_jsx_expression),
+    ),
+
+    // Inline math ($...$). Excludes $$ (which is math_block).
+    math_inline: ($) => prec.dynamic(3, seq(
+      alias($._math_inline_open_delimiter, $.math_inline_delimiter),
+      alias($._math_inline_content, $.math_inline_content),
+      alias($._math_inline_close_delimiter, $.math_inline_delimiter),
+    )),
+    _math_inline_content: ($) => new RustRegex('[^$\\s\\n\\r](?:[^$\\n\\r]*[^$\\s\\n\\r])?'),
+
+    // Footnote reference [^id]. Distinct from footnote_definition which has
+    // `:` immediately after the label. Uses a combined `[^` token to beat
+    // the `[` bracket in the inline-content lexer context.
+    footnote_reference: ($) => seq(
+      alias($._footnote_ref_open, $.footnote_reference_open),
+      alias(repeat1(choice(
+        $._word,
+        punctuation_without($, ['[', ']', '^']),
+      )), $.footnote_reference_label),
+      ']',
+    ),
+    _footnote_ref_open: ($) => token(prec(2, '[^')),
+
+    // Inline images. Reuse link_label and link_destination for the internals.
+    image: ($) => prec.dynamic(PRECEDENCE_LEVEL_IMAGE, seq(
+      '!',
+      $.link_label,
+      choice(
+        // inline destination
+        seq('(', optional($._whitespace), optional($.link_destination),
+          optional(seq($._whitespace, $.link_title)),
+          optional($._whitespace), ')'),
+        // full reference: ![alt][label]
+        $.link_label,
+        // Shortcut (`![alt]`) and collapsed (`![alt][]`) image references are
+        // intentionally unsupported by this simplified image rule.
+      ),
+    )),
+
+    // Inline links (including reference forms). Full: [text](dest "title"),
+    // reference: [text][label], shortcut: [label]. The shortcut form is
+    // harmless if the label does not resolve — consumers check against
+    // link_reference_definitions.
+    link: ($) => prec.dynamic(PRECEDENCE_LEVEL_LINK, choice(
+      // Inline link: [text](dest "title")
+      seq($.link_label,
+        '(', optional($._whitespace), optional($.link_destination),
+        optional(seq($._whitespace, $.link_title)),
+        optional($._whitespace), ')'),
+      // Full reference: [text][label]
+      seq($.link_label, $.link_label),
+      // Collapsed reference: [text][]
+      seq($.link_label, '[', ']'),
+      // Shortcut reference: [label] on its own.
+      $.link_label,
+    )),
+
+    // Strikethrough (GFM): ~~text~~
+    strikethrough: ($) => prec.dynamic(1, seq(
+      alias($._strikethrough_delimiter, $.strikethrough_delimiter),
+      alias(repeat1($._inline_no_strikethrough), $.strikethrough_content),
+      alias($._strikethrough_delimiter, $.strikethrough_delimiter),
+    )),
+    _strikethrough_delimiter: ($) => token(prec(2, '~~')),
+    _inline_no_strikethrough: ($) => choice(
+      $._whitespace,
+      $.inline_code,
+      $.autolink,
+      $.html_inline,
+      $.mdx_jsx_inline,
+      $.math_inline,
+      $.image,
+      $.footnote_reference,
+      $.link,
+      $.strong,
+      $.emphasis,
+      $.numeric_token,
+      $.path_like_token,
+      $.identifier_like_token,
+      $.word_token,
+      $.terminator,
+      $.separator,
+      $.bracket,
+      // omit strikethrough itself (no same-delimiter nesting)
+      $.operator_like,
+    ),
+
+    // Emphasis: *text* or _text_. Strong: **text** or __text__.
+    // Implemented as simple paired delimiters. CommonMark's full
+    // left/right-flanking rules are not reproduced; intraword `_` and
+    // ambiguous cases may parse differently from a spec-strict parser.
+    strong: ($) => prec.dynamic(2, choice(
+      seq(alias($._strong_star_delim, $.strong_delimiter),
+        alias(repeat1($._inline_no_strong), $.strong_content),
+        alias($._strong_star_delim, $.strong_delimiter)),
+      seq(alias($._strong_under_delim, $.strong_delimiter),
+        alias(repeat1($._inline_no_strong), $.strong_content),
+        alias($._strong_under_delim, $.strong_delimiter)),
+    )),
+    _strong_star_delim: ($) => token(prec(3, '**')),
+    _strong_under_delim: ($) => token(prec(3, '__')),
+    _inline_no_strong: ($) => choice(
+      $._whitespace,
+      $.inline_code,
+      $.autolink,
+      $.html_inline,
+      $.mdx_jsx_inline,
+      $.math_inline,
+      $.image,
+      $.footnote_reference,
+      $.link,
+      $.emphasis,
+      $.strikethrough,
+      $.numeric_token,
+      $.path_like_token,
+      $.identifier_like_token,
+      $.word_token,
+      $.terminator,
+      $.separator,
+      $.bracket,
+      $.operator_like,
+    ),
+
+    emphasis: ($) => prec.dynamic(1, choice(
+      seq(alias($._emphasis_star_delim, $.emphasis_delimiter),
+        alias(repeat1($._inline_no_emphasis), $.emphasis_content),
+        alias($._emphasis_star_delim, $.emphasis_delimiter)),
+      seq(alias($._emphasis_under_delim, $.emphasis_delimiter),
+        alias(repeat1($._inline_no_emphasis), $.emphasis_content),
+        alias($._emphasis_under_delim, $.emphasis_delimiter)),
+    )),
+    _emphasis_star_delim: ($) => token(prec(1, '*')),
+    _emphasis_under_delim: ($) => token(prec(1, '_')),
+    _inline_no_emphasis: ($) => choice(
+      $._whitespace,
+      $.inline_code,
+      $.autolink,
+      $.html_inline,
+      $.mdx_jsx_inline,
+      $.math_inline,
+      $.image,
+      $.footnote_reference,
+      $.link,
+      $.strong,
+      $.strikethrough,
+      $.numeric_token,
+      $.path_like_token,
+      $.identifier_like_token,
+      $.word_token,
+      $.terminator,
+      $.separator,
+      $.bracket,
+      $.operator_like,
+    ),
 
     pipe_table: ($) => prec.right(seq(
       $._pipe_table_start,
@@ -549,6 +1106,10 @@ export default grammar({
     $._list_marker_star_dont_interrupt,
     $._list_marker_parenthesis_dont_interrupt,
     $._list_marker_dot_dont_interrupt,
+    $.task_list_marker_checked,
+    $.task_list_marker_unchecked,
+    $._math_inline_open_delimiter,
+    $._math_inline_close_delimiter,
     $._fenced_code_block_start_backtick,
     $._fenced_code_block_start_tilde,
     $._blank_line_start,
@@ -586,7 +1147,49 @@ export default grammar({
   conflicts: ($) => [
     [$.link_reference_definition],
     [$.link_label, $._line],
-    [$.link_reference_definition, $._line],
+    [$.link_label, $.footnote_label, $._line],
+    [$.footnote_definition],
+    [$._footnote_definition_start, $._inline_element],
+    [$._footnote_definition_continuation],
+    [$.footnote_definition, $._line],
+    [$.footnote_definition, $.link_reference_definition, $._line],
+    [$.image_block, $._line],
+    [$.footnote_label, $._text_inline_no_link],
+    // Inline-content conflicts.
+    [$.link_label, $.bracket],
+    [$.link_label, $._callout_header_paragraph, $.bracket],
+    [$.link_label, $._callout_marker_open, $.bracket],
+    [$.footnote_label, $.bracket],
+    [$.footnote_reference, $.bracket],
+    [$.link, $.bracket],
+    [$.image, $.bracket],
+    [$.autolink, $.bracket],
+    [$.html_inline, $.bracket],
+    [$.mdx_jsx_inline, $.bracket],
+    [$.inline_code, $.operator_like],
+    [$.math_inline, $.operator_like],
+    [$.strong, $.emphasis, $.operator_like],
+    [$.strong, $.operator_like],
+    [$.emphasis, $.operator_like],
+    [$.strikethrough, $.operator_like],
+    [$.image_block, $.terminator, $.image],
+    [$.footnote_definition, $.link_reference_definition, $._inline_element],
+    [$.image_block, $._inline_element],
+    [$.terminator, $.image],
+    [$.footnote_label, $.footnote_reference],
+    [$.footnote_definition, $._inline_element],
+    [$.image_block, $.image],
+    [$.link_destination, $.link_title],
+    [$._link_destination_parenthesis, $.link_title],
+    [$.link],
+    [$.link_reference_definition, $.link],
+    [$.link_label, $.footnote_label, $.bracket, $.footnote_reference],
+    [$.link_label, $.bracket, $.footnote_reference],
+    [$.footnote_label, $._text_inline_no_link, $.footnote_reference],
+    [$._text_inline_no_link, $.footnote_reference],
+    [$.footnote_reference, $.text_span],
+    [$.footnote_reference, $.bracket],
+    [$.link_reference_definition, $._inline_element],
   ],
   extras: ($) => [],
 });

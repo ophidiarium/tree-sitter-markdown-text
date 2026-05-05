@@ -12,4 +12,9 @@ Trailing paragraph.
       (link_destination)
       (link_title))
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

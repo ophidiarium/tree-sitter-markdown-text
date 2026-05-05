@@ -11,7 +11,12 @@ Trailing paragraph.
   (minus_metadata)
   (section
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 TOML front matter
@@ -26,4 +31,9 @@ Trailing paragraph.
   (plus_metadata)
   (section
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

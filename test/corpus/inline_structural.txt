@@ -1,0 +1,724 @@
+================================================================================
+Inline code span
+================================================================================
+A code `span` here.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (inline_code
+          (inline_code_delimiter)
+          (inline_code_content)
+          (inline_code_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Unicode words
+================================================================================
+café naïve 漢字.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Unicode symbols in prose
+================================================================================
+Done ✅ costs €5 © 2026.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like))
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like)
+          (numeric_token))
+        (text_span
+          (operator_like))
+        (text_span
+          (numeric_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Unicode punctuation in prose
+================================================================================
+A — “quote”、end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like))
+        (text_span
+          (operator_like)
+          (word_token)
+          (operator_like)
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Identifier-like variants
+================================================================================
+PascalCase camelCase snake_case _private v1 2cool.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (identifier_like_token))
+        (text_span
+          (identifier_like_token))
+        (text_span
+          (identifier_like_token))
+        (text_span
+          (identifier_like_token))
+        (text_span
+          (identifier_like_token))
+        (text_span
+          (identifier_like_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Strikethrough can contain structural inline nodes
+================================================================================
+A ~~[link](url) **bold** *em* ![img](x) <span>x</span> <Component/> [^1]~~ end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (strikethrough
+          (strikethrough_delimiter)
+          (strikethrough_content
+            (link
+              (link_label)
+              (link_destination))
+            (strong
+              (strong_delimiter)
+              (strong_content
+                (word_token))
+              (strong_delimiter))
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_content
+                (word_token))
+              (emphasis_delimiter))
+            (image
+              (link_label)
+              (link_destination))
+            (html_inline
+              (html_open_tag))
+            (word_token)
+            (html_inline
+              (html_close_tag))
+            (mdx_jsx_inline
+              (mdx_jsx_open_tag))
+            (footnote_reference
+              (footnote_reference_open)
+              (footnote_reference_label)))
+          (strikethrough_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Strong can contain structural inline nodes
+================================================================================
+A **[link](url) ![img](x) <span>x</span> <Component/> [^1]** end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (strong
+          (strong_delimiter)
+          (strong_content
+            (link
+              (link_label)
+              (link_destination))
+            (image
+              (link_label)
+              (link_destination))
+            (html_inline
+              (html_open_tag))
+            (word_token)
+            (html_inline
+              (html_close_tag))
+            (mdx_jsx_inline
+              (mdx_jsx_open_tag))
+            (footnote_reference
+              (footnote_reference_open)
+              (footnote_reference_label)))
+          (strong_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Emphasis can contain structural inline nodes
+================================================================================
+A *[link](url) ![img](x) <span>x</span> <Component/> [^1]* end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (emphasis
+          (emphasis_delimiter)
+          (emphasis_content
+            (link
+              (link_label)
+              (link_destination))
+            (image
+              (link_label)
+              (link_destination))
+            (html_inline
+              (html_open_tag))
+            (word_token)
+            (html_inline
+              (html_close_tag))
+            (mdx_jsx_inline
+              (mdx_jsx_open_tag))
+            (footnote_reference
+              (footnote_reference_open)
+              (footnote_reference_label)))
+          (emphasis_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Formatted spans include bracket punctuation
+================================================================================
+A *(x)* **(y)** ~~(z)~~ end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (emphasis
+          (emphasis_delimiter)
+          (emphasis_content
+            (bracket)
+            (word_token)
+            (bracket))
+          (emphasis_delimiter))
+        (strong
+          (strong_delimiter)
+          (strong_content
+            (bracket)
+            (word_token)
+            (bracket))
+          (strong_delimiter))
+        (strikethrough
+          (strikethrough_delimiter)
+          (strikethrough_content
+            (bracket)
+            (word_token)
+            (bracket))
+          (strikethrough_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+MDX JSX inline nested attribute expression
+================================================================================
+Inline <Component prop={{ key: 'value' }}/> end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (mdx_jsx_inline
+          (mdx_jsx_open_tag))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Emphasis with asterisks
+================================================================================
+This is *emphasized* text.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (emphasis
+          (emphasis_delimiter)
+          (emphasis_content
+            (word_token))
+          (emphasis_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Strong with double asterisks
+================================================================================
+Some **bold** text.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (strong
+          (strong_delimiter)
+          (strong_content
+            (word_token))
+          (strong_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Strikethrough with tildes
+================================================================================
+A ~~deleted~~ word.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (strikethrough
+          (strikethrough_delimiter)
+          (strikethrough_content
+            (word_token))
+          (strikethrough_delimiter))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Inline link
+================================================================================
+See [docs](https://example.com) for details.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (link
+          (link_label)
+          (link_destination))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Inline image
+================================================================================
+See ![diagram](./pic.png) above.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (image
+          (link_label)
+          (link_destination))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Autolink URI
+================================================================================
+Visit <https://example.com> today.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (autolink
+          (uri))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Autolink email
+================================================================================
+Email <user@example.com> me.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (autolink
+          (email))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Inline HTML tag
+================================================================================
+See <span>raw</span> here.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (html_inline
+          (html_open_tag))
+        (text_span
+          (word_token))
+        (html_inline
+          (html_close_tag))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Uppercase inline HTML tag
+================================================================================
+See <DIV class="x">raw</DIV> now.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (html_inline
+          (html_open_tag))
+        (text_span
+          (word_token))
+        (html_inline
+          (html_close_tag))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Inline math
+================================================================================
+Use $E=mc^2$ as energy.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (math_inline
+          (math_inline_delimiter)
+          (math_inline_content)
+          (math_inline_delimiter))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Currency dollars are plain prose
+================================================================================
+Price is $20,000 and $30,000 today.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like)
+          (numeric_token)
+          (separator)
+          (numeric_token))
+        (text_span
+          (word_token))
+        (text_span
+          (operator_like)
+          (numeric_token)
+          (separator)
+          (numeric_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Footnote reference
+================================================================================
+See note[^1] for details.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (footnote_reference
+          (footnote_reference_open)
+          (footnote_reference_label))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+MDX JSX inline element
+================================================================================
+Hello <Component prop="value"/> end.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (mdx_jsx_inline
+          (mdx_jsx_open_tag))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+MDX JSX expression
+================================================================================
+Value is {expr} today.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (mdx_jsx_inline
+          (mdx_jsx_expression))
+        (text_span
+          (word_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

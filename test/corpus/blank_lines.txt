@@ -9,10 +9,16 @@ B.
 (document
   (section
     (paragraph
-      (inline))
+      (inline
+        (text_span
+          (word_token)
+          (terminator))))
     (blank_line)
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Multiple consecutive blank lines
@@ -26,11 +32,17 @@ B.
 (document
   (section
     (paragraph
-      (inline))
+      (inline
+        (text_span
+          (word_token)
+          (terminator))))
     (blank_line)
     (blank_line)
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Thematic break followed by blank line
@@ -45,4 +57,9 @@ Trailing paragraph.
     (thematic_break)
     (blank_line)
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))

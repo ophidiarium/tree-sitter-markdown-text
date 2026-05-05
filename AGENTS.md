@@ -24,13 +24,14 @@
 
 ## Grammar enrichments on top of upstream
 
-Three structural departures from upstream `tree-sitter-markdown`:
+Four structural departures from upstream `tree-sitter-markdown`:
 
 1. `atx_heading` and `setext_heading` expose the marker/underline as a `level` field so heading depth is directly queryable: `(atx_heading level: _ @lvl)`.
 2. `blank_line` is a public node (upstream's `_blank_line`). Required for file-level metrics like BLANK LOC.
 3. HTML block type 2 (`<!-- ... -->`) is aliased to `html_comment_block` inside `html_block` so a single query can target block-level comments for Markdown-CLOC.
+4. The `inline` wrapper is no longer opaque. It emits structured children (`text_span`, `word_token`, `numeric_token`, `identifier_like_token`, `path_like_token`, `terminator`, `separator`, `bracket`, `operator_like`, `inline_code`, `emphasis`, `strong`, `strikethrough`, `link`, `image`, `autolink`, `html_inline`, `mdx_jsx_inline`, `math_inline`, `footnote_reference`) per mehen's Required Markdown AST Model §3.2/§3.3.
 
-If you extend the grammar further, preserve these three. Corpus assertions in `test/corpus/{headings,blank_lines,html_blocks}.txt` cover them.
+If you extend the grammar further, preserve these four. Corpus assertions in `test/corpus/{headings,blank_lines,html_blocks,inline_structural}.txt` cover them.
 
 ## Versioning and release
 
@@ -50,4 +51,4 @@ If you extend the grammar further, preserve these three. Corpus assertions in `t
 
 - `grammar.js` is an ES module (`"type": "module"` in package.json) and uses `import`/`export default grammar(...)`. Node's `fs`/`url` are imported as default namespace objects (`import nodeFs from 'node:fs'`) rather than destructured — the ESLint config enforces `object-curly-spacing: never` for compatibility with the upstream treesitter config.
 - HTML entity list lives in `html_entities.json` at repo root. Keep in sync with `https://html.spec.whatwg.org/multipage/entities.json` when bumping.
-- `queries/injections.scm` does NOT include a `markdown_inline` injection — this grammar does not ship a second inline pass. Consumers that need emphasis/links/etc. should use a different grammar alongside.
+- `queries/injections.scm` does NOT include a `markdown_inline` injection — this grammar's `inline` wrapper carries structured children natively (see §3 of the Required Markdown AST Model). A consumer that wants additional language injection inside inline spans must add their own injection entries.

@@ -12,11 +12,20 @@ Trailing paragraph.
       (list_item
         (list_marker_minus)
         (paragraph
-          (inline)))
+          (inline
+            (text_span
+              (word_token)))))
       (list_item
         (list_marker_minus)
         (paragraph
-          (inline))))))
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
 
 ================================================================================
 Ordered list with dot markers
@@ -32,11 +41,20 @@ Trailing paragraph.
       (list_item
         (list_marker_dot)
         (paragraph
-          (inline)))
+          (inline
+            (text_span
+              (word_token)))))
       (list_item
         (list_marker_dot)
         (paragraph
-          (inline))))))
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
 
 ================================================================================
 Non-one ordered marker does not interrupt paragraph
@@ -49,7 +67,23 @@ Trailing paragraph.
 (document
   (section
     (paragraph
-      (inline))))
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (numeric_token)
+          (terminator))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
 
 ================================================================================
 Task list items
@@ -62,13 +96,113 @@ Trailing paragraph.
 (document
   (section
     (list
-      (list_item
+      (task_list_item
         (list_marker_minus)
         (task_list_marker_checked)
         (paragraph
-          (inline)))
-      (list_item
+          (inline
+            (text_span
+              (word_token)))))
+      (task_list_item
         (list_marker_minus)
         (task_list_marker_unchecked)
         (paragraph
-          (inline))))))
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
+
+================================================================================
+Empty task list items
+================================================================================
+- [ ]
+- [x]
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (task_list_item
+        (list_marker_minus)
+        (task_list_marker_unchecked)
+        (blank_line))
+      (task_list_item
+        (list_marker_minus)
+        (task_list_marker_checked)
+        (blank_line)))
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Task marker requires following whitespace
+================================================================================
+- [x]foo
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (list_item
+        (list_marker_minus)
+        (paragraph
+          (inline
+            (link
+              (link_label))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
+
+================================================================================
+Mixed list: task and non-task items coexist
+================================================================================
+- [x] done
+- plain item
+- [ ] todo
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (list
+      (task_list_item
+        (list_marker_minus)
+        (task_list_marker_checked)
+        (paragraph
+          (inline
+            (text_span
+              (word_token)))))
+      (list_item
+        (list_marker_minus)
+        (paragraph
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)))))
+      (task_list_item
+        (list_marker_minus)
+        (task_list_marker_unchecked)
+        (paragraph
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))

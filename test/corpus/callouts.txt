@@ -1,0 +1,125 @@
+================================================================================
+Callout NOTE with body on next line
+================================================================================
+> [!NOTE]
+> This is a note callout.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (block_quote
+      (callout
+        (block_quote_marker)
+        (callout_marker_open)
+        callout_type: (callout_type)
+        (callout_marker_close)
+        (block_continuation)
+        (paragraph
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
+
+================================================================================
+Callout WARNING with inline content after marker
+================================================================================
+> [!WARNING] pay attention
+> more body.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (block_quote
+      (callout
+        (block_quote_marker)
+        (callout_marker_open)
+        callout_type: (callout_type)
+        (callout_marker_close)
+        (inline
+          (text_span
+            (word_token))
+          (text_span
+            (word_token)))
+        (block_continuation)
+        (paragraph
+          (inline
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))
+            (text_span
+              (word_token))
+            (text_span
+              (word_token)
+              (terminator))))))))
+
+================================================================================
+Unsupported alert marker stays plain block quote
+================================================================================
+> [!UNKNOWN]
+> body
+
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (block_quote
+      (block_quote_marker)
+      (paragraph
+        (inline
+          (link
+            (link_label))
+          (block_continuation)
+          (text_span
+            (word_token)))))
+    (blank_line)
+    (paragraph
+      (inline
+        (text_span
+          (word_token))
+        (text_span
+          (word_token)
+          (terminator))))))
+
+================================================================================
+Plain block_quote without alert prefix
+================================================================================
+> A plain quote.
+Trailing paragraph.
+--------------------------------------------------------------------------------
+
+(document
+  (section
+    (block_quote
+      (block_quote_marker)
+      (paragraph
+        (inline
+          (text_span
+            (word_token))
+          (text_span
+            (word_token))
+          (text_span
+            (word_token)
+            (terminator))
+          (text_span
+            (word_token))
+          (text_span
+            (word_token)
+            (terminator)))))))
