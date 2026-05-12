@@ -1,6 +1,6 @@
 LANGUAGE_NAME := tree-sitter-markdown-text
 HOMEPAGE_URL := https://github.com/ophidiarium/tree-sitter-markdown-text
-VERSION := 0.1.0
+VERSION := 0.2.0
 
 # repository
 SRC_DIR := src
