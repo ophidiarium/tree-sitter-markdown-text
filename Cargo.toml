@@ -1,7 +1,7 @@
 [package]
 name = "tree-sitter-markdown-text"
 description = "Markdown grammar for tree-sitter, with a textlint-style AST shape"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Ophidiarium"]
 license = "MIT"
 readme = "README.md"
