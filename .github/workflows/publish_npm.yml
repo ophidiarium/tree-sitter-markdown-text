@@ -7,6 +7,11 @@ on:
   pull_request:
     paths:
       - .github/workflows/publish_npm.yml
+      - binding.gyp
+      - bindings/node/**
+      - src/scanner.c
+      - src/parser.c
+      - src/tree_sitter/**
 
 permissions:
   id-token: write # Required for OIDC
