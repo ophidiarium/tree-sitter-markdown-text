@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/publish_pypi.yml
+      - bindings/python/**
 
 permissions:
   id-token: write
