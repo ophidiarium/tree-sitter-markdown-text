@@ -33,10 +33,16 @@ enum {
     HTML_TAG_NAME_BUFFER = 11,
     // Sentinel written into name_length when a tag name overflows the buffer.
     HTML_TAG_NAME_TOO_LONG = 12,
+    // Serialized integers are little-endian.
+    SERIALIZED_BYTE_BITS = 8,
+    SERIALIZED_U32_BYTE_1_SHIFT = 8,
+    SERIALIZED_U32_BYTE_2_SHIFT = 16,
+    SERIALIZED_U32_BYTE_3_SHIFT = 24,
     // Fixed header bytes that `serialize`/`deserialize` write/read before the
-    // trailing Block[] payload: state, matched, indentation, column,
+    // trailing block-byte payload: state, matched, indentation, column,
     // fenced_code_block_delimiter_length.
-    SERIALIZED_HEADER_SIZE = 5,
+    SERIALIZED_HEADER_SIZE = 10,
+    SERIALIZED_BLOCK_SIZE = 1,
 };
 
 // For explanation of the tokens see grammar.js
@@ -92,6 +98,7 @@ typedef enum {
     PLUS_METADATA,
     PIPE_TABLE_START,
     PIPE_TABLE_LINE_ENDING,
+    SCANNER_TOKEN_TYPE_COUNT,
 } TokenType;
 
 // Description of a block on the block stack.
@@ -155,14 +162,14 @@ static char ascii_tolower(int32_t codepoint) {
 static size_t max_serialized_blocks(void) {
     return ((size_t)TREE_SITTER_SERIALIZATION_BUFFER_SIZE -
             (size_t)SERIALIZED_HEADER_SIZE) /
-           sizeof(Block);
+           (size_t)SERIALIZED_BLOCK_SIZE;
 }
 
 // Returns the indentation level which lines of a list item should have at
 // minimum. Should only be called with blocks for which `is_list_item` returns
 // true.
-static uint8_t list_item_indentation(Block block) {
-    return (uint8_t)(block - LIST_ITEM + 2);
+static uint16_t list_item_indentation(Block block) {
+    return (uint16_t)(block - LIST_ITEM + 2);
 }
 
 enum {
@@ -186,59 +193,34 @@ static const char *const HTML_TAG_NAMES_RULE_7[NUM_HTML_TAG_NAMES_RULE_7] = {
     "td",       "tfoot",      "th",     "thead",    "title",    "tr",
     "track",    "ul"};
 
-// For explanation of the tokens see grammar.js
-static const bool paragraph_interrupt_symbols[] = {
-    false, // LINE_ENDING,
-    false, // SOFT_LINE_ENDING,
-    false, // BLOCK_CLOSE,
-    false, // BLOCK_CONTINUATION,
-    true,  // BLOCK_QUOTE_START,
-    false, // INDENTED_CHUNK_START,
-    true,  // ATX_H1_MARKER,
-    true,  // ATX_H2_MARKER,
-    true,  // ATX_H3_MARKER,
-    true,  // ATX_H4_MARKER,
-    true,  // ATX_H5_MARKER,
-    true,  // ATX_H6_MARKER,
-    true,  // SETEXT_H1_UNDERLINE,
-    true,  // SETEXT_H2_UNDERLINE,
-    true,  // THEMATIC_BREAK,
-    true,  // LIST_MARKER_MINUS,
-    true,  // LIST_MARKER_PLUS,
-    true,  // LIST_MARKER_STAR,
-    true,  // LIST_MARKER_PARENTHESIS,
-    true,  // LIST_MARKER_DOT,
-    false, // LIST_MARKER_MINUS_DONT_INTERRUPT,
-    false, // LIST_MARKER_PLUS_DONT_INTERRUPT,
-    false, // LIST_MARKER_STAR_DONT_INTERRUPT,
-    false, // LIST_MARKER_PARENTHESIS_DONT_INTERRUPT,
-    false, // LIST_MARKER_DOT_DONT_INTERRUPT,
-    false, // TASK_LIST_MARKER_CHECKED,
-    false, // TASK_LIST_MARKER_UNCHECKED,
-    false, // MATH_INLINE_OPEN_DELIMITER,
-    false, // MATH_INLINE_CLOSE_DELIMITER,
-    true,  // FENCED_CODE_BLOCK_START_BACKTICK,
-    true,  // FENCED_CODE_BLOCK_START_TILDE,
-    true,  // BLANK_LINE_START,
-    false, // FENCED_CODE_BLOCK_END_BACKTICK,
-    false, // FENCED_CODE_BLOCK_END_TILDE,
-    true,  // HTML_BLOCK_1_START,
-    false, // HTML_BLOCK_1_END,
-    true,  // HTML_BLOCK_2_START,
-    true,  // HTML_BLOCK_3_START,
-    true,  // HTML_BLOCK_4_START,
-    true,  // HTML_BLOCK_5_START,
-    true,  // HTML_BLOCK_6_START,
-    false, // HTML_BLOCK_7_START,
-    false, // CLOSE_BLOCK,
-    false, // NO_INDENTED_CHUNK,
-    false, // ERROR,
-    false, // TRIGGER_ERROR,
-    false, // EOF,
-    false, // MINUS_METADATA,
-    false, // PLUS_METADATA,
-    true,  // PIPE_TABLE_START,
-    false, // PIPE_TABLE_LINE_ENDING,
+// For explanation of the tokens see grammar.js. Designated initializers keep
+// this table tied to TokenType names rather than enum positions.
+static const bool paragraph_interrupt_symbols[SCANNER_TOKEN_TYPE_COUNT] = {
+    [BLOCK_QUOTE_START] = true,
+    [ATX_H1_MARKER] = true,
+    [ATX_H2_MARKER] = true,
+    [ATX_H3_MARKER] = true,
+    [ATX_H4_MARKER] = true,
+    [ATX_H5_MARKER] = true,
+    [ATX_H6_MARKER] = true,
+    [SETEXT_H1_UNDERLINE] = true,
+    [SETEXT_H2_UNDERLINE] = true,
+    [THEMATIC_BREAK] = true,
+    [LIST_MARKER_MINUS] = true,
+    [LIST_MARKER_PLUS] = true,
+    [LIST_MARKER_STAR] = true,
+    [LIST_MARKER_PARENTHESIS] = true,
+    [LIST_MARKER_DOT] = true,
+    [FENCED_CODE_BLOCK_START_BACKTICK] = true,
+    [FENCED_CODE_BLOCK_START_TILDE] = true,
+    [BLANK_LINE_START] = true,
+    [HTML_BLOCK_1_START] = true,
+    [HTML_BLOCK_2_START] = true,
+    [HTML_BLOCK_3_START] = true,
+    [HTML_BLOCK_4_START] = true,
+    [HTML_BLOCK_5_START] = true,
+    [HTML_BLOCK_6_START] = true,
+    [PIPE_TABLE_START] = true,
 };
 
 // State bitflags used with `Scanner.state`.
@@ -246,19 +228,8 @@ enum {
     STATE_MATCHING = 1U << 0U,            // Currently matching at the beginning of a line.
     STATE_WAS_SOFT_LINE_BREAK = 1U << 1U, // Last line break was inside a paragraph.
     STATE_CLOSE_BLOCK = 1U << 4U,         // Block should be closed after next line break.
+    STATE_ALL = STATE_MATCHING | STATE_WAS_SOFT_LINE_BREAK | STATE_CLOSE_BLOCK,
 };
-
-// NOLINTNEXTLINE(readability-identifier-length,readability-magic-numbers) — classic bit-smearing routine
-static size_t roundup_32(size_t x) {
-    x--;
-    x |= x >> 1U;
-    x |= x >> 2U;
-    x |= x >> 4U;
-    x |= x >> 8U;
-    x |= x >> 16U;
-    x++;
-    return x;
-}
 // NOLINTEND(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 
 typedef struct {
@@ -276,14 +247,77 @@ typedef struct {
     size_t matched;
     // Consumed but "unused" indentation. Sometimes a tab needs to be "split" to
     // be used in multiple tokens.
-    uint8_t indentation;
+    uint16_t indentation;
     // The current column. Used to decide how many spaces a tab should equal
     uint8_t column;
     // The delimiter length of the currently open fenced code block
-    uint8_t fenced_code_block_delimiter_length;
+    uint32_t fenced_code_block_delimiter_length;
 
     bool simulate;
 } Scanner;
+
+typedef struct {
+    size_t open_blocks_size;
+    uint8_t state;
+    size_t matched;
+    uint16_t indentation;
+    uint8_t column;
+    uint32_t fenced_code_block_delimiter_length;
+    bool simulate;
+} ScannerSnapshot;
+
+typedef struct {
+    TokenType result_symbol;
+    uint16_t extra_indentation;
+    uint16_t marker_width_adjust;
+} ListMarker;
+
+typedef struct {
+    char delimiter;
+    TokenType result_symbol;
+} MetadataFence;
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static ScannerSnapshot snapshot_scanner(const Scanner *s) {
+    ScannerSnapshot snapshot = {
+        .open_blocks_size = s->open_blocks.size,
+        .state = s->state,
+        .matched = s->matched,
+        .indentation = s->indentation,
+        .column = s->column,
+        .fenced_code_block_delimiter_length =
+            s->fenced_code_block_delimiter_length,
+        .simulate = s->simulate,
+    };
+    return snapshot;
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static void restore_scanner(Scanner *s, ScannerSnapshot snapshot) {
+    s->open_blocks.size = snapshot.open_blocks_size;
+    s->state = snapshot.state;
+    s->matched = snapshot.matched;
+    s->indentation = snapshot.indentation;
+    s->column = snapshot.column;
+    s->fenced_code_block_delimiter_length =
+        snapshot.fenced_code_block_delimiter_length;
+    s->simulate = snapshot.simulate;
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static bool restore_scanner_and_return(Scanner *s, ScannerSnapshot snapshot,
+                                       bool result) {
+    restore_scanner(s, snapshot);
+    return result;
+}
+
+static void add_indentation(uint16_t *indentation, size_t amount) {
+    if ((size_t)UINT16_MAX - (size_t)(*indentation) < amount) {
+        *indentation = UINT16_MAX;
+    } else {
+        *indentation = (uint16_t)(*indentation + amount);
+    }
+}
 
 // NOLINTNEXTLINE(readability-identifier-length) — `s`/`b` are the scanner/block conventions throughout this file
 static bool push_block(Scanner *s, Block b) {
@@ -316,24 +350,61 @@ static inline Block pop_block(Scanner *s) {
     return s->open_blocks.items[--s->open_blocks.size];
 }
 
+// NOLINTNEXTLINE(readability-identifier-length)
+static void write_u16(char *buffer, unsigned *size, uint16_t value) {
+    buffer[(*size)++] = (char)(value & UINT8_MAX);
+    buffer[(*size)++] = (char)(value >> SERIALIZED_BYTE_BITS);
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static void write_u32(char *buffer, unsigned *size, uint32_t value) {
+    buffer[(*size)++] = (char)(value & UINT8_MAX);
+    buffer[(*size)++] =
+        (char)((value >> SERIALIZED_U32_BYTE_1_SHIFT) & UINT8_MAX);
+    buffer[(*size)++] =
+        (char)((value >> SERIALIZED_U32_BYTE_2_SHIFT) & UINT8_MAX);
+    buffer[(*size)++] =
+        (char)((value >> SERIALIZED_U32_BYTE_3_SHIFT) & UINT8_MAX);
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static uint16_t read_u16(const char *buffer, unsigned *size) {
+    uint16_t byte_0 = (uint8_t)buffer[(*size)++];
+    uint16_t byte_1 = (uint8_t)buffer[(*size)++];
+    return (uint16_t)(byte_0 | (uint16_t)(byte_1 << SERIALIZED_BYTE_BITS));
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static uint32_t read_u32(const char *buffer, unsigned *size) {
+    uint32_t byte_0 = (uint8_t)buffer[(*size)++];
+    uint32_t byte_1 = (uint8_t)buffer[(*size)++];
+    uint32_t byte_2 = (uint8_t)buffer[(*size)++];
+    uint32_t byte_3 = (uint8_t)buffer[(*size)++];
+    return byte_0 | (byte_1 << SERIALIZED_U32_BYTE_1_SHIFT) |
+           (byte_2 << SERIALIZED_U32_BYTE_2_SHIFT) |
+           (byte_3 << SERIALIZED_U32_BYTE_3_SHIFT);
+}
+
+static bool is_valid_block_value(uint8_t value) {
+    return value <= (uint8_t)ANONYMOUS;
+}
+
 // Write the whole state of a Scanner to a byte buffer.
 // NOLINTNEXTLINE(readability-identifier-length)
 static unsigned serialize(Scanner *s, char *buffer) {
     unsigned size = 0;
     buffer[size++] = (char)s->state;
-    buffer[size++] = (char)s->matched;
-    buffer[size++] = (char)s->indentation;
+    write_u16(buffer, &size, (uint16_t)s->matched);
+    write_u16(buffer, &size, s->indentation);
     buffer[size++] = (char)s->column;
-    buffer[size++] = (char)s->fenced_code_block_delimiter_length;
+    write_u32(buffer, &size, s->fenced_code_block_delimiter_length);
     assert(size == SERIALIZED_HEADER_SIZE);
     size_t max_blocks = max_serialized_blocks();
     size_t blocks_count = s->open_blocks.size < max_blocks
                               ? s->open_blocks.size
                               : max_blocks;
-    if (blocks_count > 0) {
-        memcpy(&buffer[size], s->open_blocks.items,
-               blocks_count * sizeof(Block));
-        size += (unsigned)(blocks_count * sizeof(Block));
+    for (size_t i = 0; i < blocks_count; i++) {
+        buffer[size++] = (char)s->open_blocks.items[i];
     }
     return size;
 }
@@ -343,52 +414,57 @@ static unsigned serialize(Scanner *s, char *buffer) {
 // NOLINTNEXTLINE(readability-identifier-length)
 static void deserialize(Scanner *s, const char *buffer, unsigned length) {
     s->open_blocks.size = 0;
-    s->open_blocks.capacity = 0;
     s->state = 0;
     s->matched = 0;
     s->indentation = 0;
     s->column = 0;
     s->fenced_code_block_delimiter_length = 0;
-    // The serialized form is a fixed 5-byte header followed by zero or more
-    // Block entries. Refuse to read a payload that is either too short for the
-    // header or whose trailing segment is not a whole number of Block values;
-    // either case would point at a corrupted buffer and we'd rather resume
-    // from a clean slate than walk off the end of `buffer` or copy a partial
-    // Block onto the open-block stack.
+    // The serialized form is a fixed header followed by one byte per Block.
+    // Validate all fields before applying them so corrupted buffers resume from
+    // a clean state instead of a partially restored one.
     if (length < SERIALIZED_HEADER_SIZE) {
         return;
     }
-    size_t blocks_size = length - SERIALIZED_HEADER_SIZE;
-    if (blocks_size % sizeof(Block) != 0) {
+    size_t blocks_count = (size_t)length - (size_t)SERIALIZED_HEADER_SIZE;
+    if (blocks_count > max_serialized_blocks()) {
         return;
     }
-    size_t size = 0;
-    s->state = (uint8_t)buffer[size++];
-    s->matched = (size_t)(uint8_t)buffer[size++];
-    s->indentation = (uint8_t)buffer[size++];
-    s->column = (uint8_t)buffer[size++];
-    s->fenced_code_block_delimiter_length = (uint8_t)buffer[size++];
-    if (blocks_size > 0) {
-        size_t blocks_count = blocks_size / sizeof(Block);
-
-        // ensure open blocks has enough room
-        if (s->open_blocks.capacity < blocks_count) {
-            if (blocks_count > max_serialized_blocks()) {
-                return;
-            }
-            size_t capacity = roundup_32(blocks_count);
-            void *tmp = ts_realloc(s->open_blocks.items,
-                                   sizeof(Block) * capacity);
-            if (tmp == NULL) {
-                return;
-            }
-            s->open_blocks.items = tmp;
-            s->open_blocks.capacity = capacity;
-        }
-        memcpy(s->open_blocks.items, &buffer[size],
-               blocks_count * sizeof(Block));
-        s->open_blocks.size = blocks_count;
+    unsigned size = 0;
+    uint8_t state = (uint8_t)buffer[size++];
+    size_t matched = (size_t)read_u16(buffer, &size);
+    uint16_t indentation = read_u16(buffer, &size);
+    uint8_t column = (uint8_t)buffer[size++];
+    uint32_t fenced_code_block_delimiter_length = read_u32(buffer, &size);
+    assert(size == SERIALIZED_HEADER_SIZE);
+    if ((state & (uint8_t)(~STATE_ALL)) != 0 || column >= TAB_STOP ||
+        matched > blocks_count) {
+        return;
     }
+    size_t block_offset = size;
+    for (size_t i = 0; i < blocks_count; i++) {
+        if (!is_valid_block_value((uint8_t)buffer[block_offset + i])) {
+            return;
+        }
+    }
+    if (blocks_count > 0 && s->open_blocks.capacity < blocks_count) {
+        void *tmp = ts_realloc(s->open_blocks.items,
+                               sizeof(Block) * blocks_count);
+        if (tmp == NULL) {
+            return;
+        }
+        s->open_blocks.items = tmp;
+        s->open_blocks.capacity = blocks_count;
+    }
+    s->state = state;
+    s->matched = matched;
+    s->indentation = indentation;
+    s->column = column;
+    s->fenced_code_block_delimiter_length =
+        fenced_code_block_delimiter_length;
+    for (size_t i = 0; i < blocks_count; i++) {
+        s->open_blocks.items[i] = (Block)(uint8_t)buffer[block_offset + i];
+    }
+    s->open_blocks.size = blocks_count;
 }
 
 // NOLINTNEXTLINE(readability-identifier-length)
@@ -442,7 +518,7 @@ static bool match(Scanner *s, TSLexer *lexer, Block block) {
         case INDENTED_CODE_BLOCK:
             while (s->indentation < INDENTED_CODE_INDENT) {
                 if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                    s->indentation += (uint8_t)advance(s, lexer);
+                    add_indentation(&s->indentation, advance(s, lexer));
                 } else {
                     break;
                 }
@@ -471,7 +547,7 @@ static bool match(Scanner *s, TSLexer *lexer, Block block) {
         case LIST_ITEM_MAX_INDENTATION:
             while (s->indentation < list_item_indentation(block)) {
                 if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                    s->indentation += (uint8_t)advance(s, lexer);
+                    add_indentation(&s->indentation, advance(s, lexer));
                 } else {
                     break;
                 }
@@ -487,13 +563,14 @@ static bool match(Scanner *s, TSLexer *lexer, Block block) {
             break;
         case BLOCK_QUOTE:
             while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                s->indentation += (uint8_t)advance(s, lexer);
+                add_indentation(&s->indentation, advance(s, lexer));
             }
             if (lexer->lookahead == '>') {
                 advance(s, lexer);
                 s->indentation = 0;
                 if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                    s->indentation += (uint8_t)(advance(s, lexer) - 1);
+                    add_indentation(&s->indentation,
+                                    advance(s, lexer) - 1U);
                 }
                 return true;
             }
@@ -507,14 +584,95 @@ static bool match(Scanner *s, TSLexer *lexer, Block block) {
     return false;
 }
 
+// NOLINTNEXTLINE(readability-identifier-length)
+static bool push_list_item(Scanner *s, uint16_t block_offset) {
+    uint16_t max_offset =
+        (uint16_t)(LIST_ITEM_MAX_INDENTATION - LIST_ITEM);
+    if (block_offset > max_offset) {
+        return false;
+    }
+    return push_block(s, (Block)(LIST_ITEM + block_offset));
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static bool finish_list_marker(Scanner *s, TSLexer *lexer, ListMarker marker) {
+    assert(marker.extra_indentation >= 1);
+    marker.extra_indentation--;
+    uint16_t block_offset = 0;
+    if (marker.extra_indentation <= MAX_NON_CODE_INDENT) {
+        add_indentation(&marker.extra_indentation, s->indentation);
+        s->indentation = 0;
+        block_offset = marker.extra_indentation;
+    } else {
+        block_offset = s->indentation;
+        s->indentation = marker.extra_indentation;
+    }
+    add_indentation(&block_offset, marker.marker_width_adjust);
+    if (!s->simulate && !push_list_item(s, block_offset)) {
+        return false;
+    }
+    lexer->result_symbol = marker.result_symbol;
+    return true;
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static void consume_line_ending(Scanner *s, TSLexer *lexer) {
+    if (lexer->lookahead == '\r') {
+        advance(s, lexer);
+        if (lexer->lookahead == '\n') {
+            advance(s, lexer);
+        }
+    } else {
+        advance(s, lexer);
+    }
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static void skip_horizontal_space(Scanner *s, TSLexer *lexer) {
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+        advance(s, lexer);
+    }
+}
+
+// NOLINTNEXTLINE(readability-identifier-length)
+static bool scan_metadata_block(Scanner *s, TSLexer *lexer,
+                                MetadataFence fence) {
+    for (;;) {
+        consume_line_ending(s, lexer);
+        size_t delimiter_count = 0;
+        while (lexer->lookahead == fence.delimiter) {
+            delimiter_count++;
+            advance(s, lexer);
+        }
+        if (delimiter_count == METADATA_FENCE_WIDTH) {
+            skip_horizontal_space(s, lexer);
+            if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
+                consume_line_ending(s, lexer);
+                mark_end(s, lexer);
+                lexer->result_symbol = fence.result_symbol;
+                return true;
+            }
+        }
+        while (lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
+               !lexer->eof(lexer)) {
+            advance(s, lexer);
+        }
+        if (lexer->eof(lexer)) {
+            return false;
+        }
+    }
+}
+
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 static bool parse_fenced_code_block(Scanner *s, const char delimiter,
                                     TSLexer *lexer, const bool *valid_symbols) {
     // count the number of backticks
-    uint8_t level = 0;
+    uint32_t level = 0;
     while (lexer->lookahead == delimiter) {
         advance(s, lexer);
-        level++;
+        if (level < UINT32_MAX) {
+            level++;
+        }
     }
     mark_end(s, lexer);
     // If this is able to close a fenced code block then that is the only valid
@@ -523,7 +681,8 @@ static bool parse_fenced_code_block(Scanner *s, const char delimiter,
     // Also it cannot be indented more than 3 spaces.
     if ((delimiter == '`' ? valid_symbols[FENCED_CODE_BLOCK_END_BACKTICK]
                           : valid_symbols[FENCED_CODE_BLOCK_END_TILDE]) &&
-        s->indentation < 4 && level >= s->fenced_code_block_delimiter_length) {
+        s->indentation <= MAX_NON_CODE_INDENT &&
+        level >= s->fenced_code_block_delimiter_length) {
         while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
             advance(s, lexer);
         }
@@ -539,7 +698,8 @@ static bool parse_fenced_code_block(Scanner *s, const char delimiter,
     // string contains any backticks.
     if ((delimiter == '`' ? valid_symbols[FENCED_CODE_BLOCK_START_BACKTICK]
                           : valid_symbols[FENCED_CODE_BLOCK_START_TILDE]) &&
-        level >= 3) {
+        s->indentation <= MAX_NON_CODE_INDENT &&
+        level >= FENCED_CODE_MIN_FENCE) {
         bool info_string_has_backtick = false;
         if (delimiter == '`') {
             while (lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
@@ -624,7 +784,7 @@ static bool parse_math_inline_delimiter(Scanner *s, TSLexer *lexer,
         return false;
     }
 
-    uint8_t start_indentation = s->indentation;
+    uint16_t start_indentation = s->indentation;
     uint8_t start_column = s->column;
     advance(s, lexer);
 
@@ -632,7 +792,7 @@ static bool parse_math_inline_delimiter(Scanner *s, TSLexer *lexer,
         lexer->lookahead != '$' && lexer->lookahead != ' ' &&
         lexer->lookahead != '\t' && lexer->lookahead != '\n' &&
         lexer->lookahead != '\r' && !lexer->eof(lexer)) {
-        uint8_t delimiter_indentation = s->indentation;
+        uint16_t delimiter_indentation = s->indentation;
         uint8_t delimiter_column = s->column;
         mark_end(s, lexer);
 
@@ -676,13 +836,19 @@ static bool parse_math_inline_delimiter(Scanner *s, TSLexer *lexer,
 
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 static bool parse_star(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
+    if (s->indentation > MAX_NON_CODE_INDENT ||
+        !(valid_symbols[LIST_MARKER_STAR] ||
+          valid_symbols[LIST_MARKER_STAR_DONT_INTERRUPT] ||
+          valid_symbols[THEMATIC_BREAK])) {
+        return false;
+    }
     advance(s, lexer);
     mark_end(s, lexer);
     // Otherwise count the number of stars permitting whitespaces between them.
     size_t star_count = 1;
     // Also remember how many stars there are before the first whitespace...
     // ...and how many spaces follow the first star.
-    uint8_t extra_indentation = 0;
+    uint16_t extra_indentation = 0;
     for (;;) {
         if (lexer->lookahead == '*') {
             if (star_count == 1 && extra_indentation >= 1 &&
@@ -696,7 +862,7 @@ static bool parse_star(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             advance(s, lexer);
         } else if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
             if (star_count == 1) {
-                extra_indentation += advance(s, lexer);
+                add_indentation(&extra_indentation, advance(s, lexer));
             } else {
                 advance(s, lexer);
             }
@@ -716,7 +882,8 @@ static bool parse_star(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
     // If there was a star and at least one space after that star then this
     // could be a list marker.
     bool list_marker_star = star_count >= 1 && extra_indentation >= 1;
-    if (valid_symbols[THEMATIC_BREAK] && thematic_break && s->indentation < 4) {
+    if (valid_symbols[THEMATIC_BREAK] && thematic_break &&
+        s->indentation <= MAX_NON_CODE_INDENT) {
         // If a thematic break is valid then it takes precedence
         lexer->result_symbol = THEMATIC_BREAK;
         mark_end(s, lexer);
@@ -732,30 +899,15 @@ static bool parse_star(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         if (star_count == 1) {
             mark_end(s, lexer);
         }
-        // Not counting one space...
-        extra_indentation--;
-        // ... check if the list item begins with an indented code block
-        if (extra_indentation <= 3) {
-            // If not then calculate the indentation level of the list item
-            // content as indentation of list marker + indentation after list
-            // marker - 1
-            extra_indentation += s->indentation;
-            s->indentation = 0;
-        } else {
-            // Otherwise the indentation level is just the indentation of the
-            // list marker. We keep the indentation after the list marker for
-            // later blocks.
-            uint8_t temp = s->indentation;
-            s->indentation = extra_indentation;
-            extra_indentation = temp;
-        }
-        if (!s->simulate &&
-            !push_block(s, (Block)(LIST_ITEM + extra_indentation))) {
-            return false;
-        }
-        lexer->result_symbol =
-            dont_interrupt ? LIST_MARKER_STAR_DONT_INTERRUPT : LIST_MARKER_STAR;
-        return true;
+        return finish_list_marker(
+            s, lexer,
+            (ListMarker){
+                .result_symbol = dont_interrupt
+                                     ? LIST_MARKER_STAR_DONT_INTERRUPT
+                                     : LIST_MARKER_STAR,
+                .extra_indentation = extra_indentation,
+                .marker_width_adjust = 0,
+            });
     }
     return false;
 }
@@ -794,11 +946,12 @@ static bool parse_thematic_break_underscore(Scanner *s, TSLexer *lexer,
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 static bool parse_block_quote(Scanner *s, TSLexer *lexer,
                               const bool *valid_symbols) {
-    if (valid_symbols[BLOCK_QUOTE_START]) {
+    if (valid_symbols[BLOCK_QUOTE_START] &&
+        s->indentation <= MAX_NON_CODE_INDENT) {
         advance(s, lexer);
         s->indentation = 0;
         if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-            s->indentation += advance(s, lexer) - 1;
+            add_indentation(&s->indentation, advance(s, lexer) - 1U);
         }
         lexer->result_symbol = BLOCK_QUOTE_START;
         if (!s->simulate && !push_block(s, BLOCK_QUOTE)) {
@@ -862,7 +1015,7 @@ static bool parse_setext_underline(Scanner *s, TSLexer *lexer,
 
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 static bool parse_plus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
-    if (s->indentation <= 3 &&
+    if (s->indentation <= MAX_NON_CODE_INDENT &&
         (valid_symbols[LIST_MARKER_PLUS] ||
          valid_symbols[LIST_MARKER_PLUS_DONT_INTERRUPT] ||
          valid_symbols[PLUS_METADATA])) {
@@ -879,58 +1032,19 @@ static bool parse_plus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             if (lexer->lookahead != '\n' && lexer->lookahead != '\r') {
                 return false;
             }
-            for (;;) {
-                // advance over newline
-                if (lexer->lookahead == '\r') {
-                    advance(s, lexer);
-                    if (lexer->lookahead == '\n') {
-                        advance(s, lexer);
-                    }
-                } else {
-                    advance(s, lexer);
-                }
-                // check for pluses
-                size_t plus_count = 0;
-                while (lexer->lookahead == '+') {
-                    plus_count++;
-                    advance(s, lexer);
-                }
-                if (plus_count == 3) {
-                    // if exactly 3 check if next symbol (after eventual
-                    // whitespace) is newline
-                    while (lexer->lookahead == ' ' ||
-                           lexer->lookahead == '\t') {
-                        advance(s, lexer);
-                    }
-                    if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
-                        // if so also consume newline
-                        if (lexer->lookahead == '\r') {
-                            advance(s, lexer);
-                            if (lexer->lookahead == '\n') {
-                                advance(s, lexer);
-                            }
-                        } else {
-                            advance(s, lexer);
-                        }
-                        mark_end(s, lexer);
-                        lexer->result_symbol = PLUS_METADATA;
-                        return true;
-                    }
-                }
-                // otherwise consume rest of line
-                while (lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
-                       !lexer->eof(lexer)) {
-                    advance(s, lexer);
-                }
-                // if end of file is reached, then this is not metadata
-                if (lexer->eof(lexer)) {
-                    break;
-                }
+            ScannerSnapshot metadata_snapshot = snapshot_scanner(s);
+            if (scan_metadata_block(
+                    s, lexer,
+                    (MetadataFence){.delimiter = '+',
+                                    .result_symbol = PLUS_METADATA})) {
+                return true;
             }
+            restore_scanner(s, metadata_snapshot);
+            return false;
         } else {
-            uint8_t extra_indentation = 0;
+            uint16_t extra_indentation = 0;
             while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                extra_indentation += advance(s, lexer);
+                add_indentation(&extra_indentation, advance(s, lexer));
             }
             bool dont_interrupt = false;
             if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
@@ -942,23 +1056,15 @@ static bool parse_plus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             if (extra_indentation >= 1 &&
                 (dont_interrupt ? valid_symbols[LIST_MARKER_PLUS_DONT_INTERRUPT]
                                 : valid_symbols[LIST_MARKER_PLUS])) {
-                lexer->result_symbol = dont_interrupt
-                                           ? LIST_MARKER_PLUS_DONT_INTERRUPT
-                                           : LIST_MARKER_PLUS;
-                extra_indentation--;
-                if (extra_indentation <= 3) {
-                    extra_indentation += s->indentation;
-                    s->indentation = 0;
-                } else {
-                    uint8_t temp = s->indentation;
-                    s->indentation = extra_indentation;
-                    extra_indentation = temp;
-                }
-                if (!s->simulate &&
-                    !push_block(s, (Block)(LIST_ITEM + extra_indentation))) {
-                    return false;
-                }
-                return true;
+                return finish_list_marker(
+                    s, lexer,
+                    (ListMarker){
+                        .result_symbol = dont_interrupt
+                                             ? LIST_MARKER_PLUS_DONT_INTERRUPT
+                                             : LIST_MARKER_PLUS,
+                        .extra_indentation = extra_indentation,
+                        .marker_width_adjust = 0,
+                    });
             }
         }
     }
@@ -970,7 +1076,7 @@ static bool parse_plus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
                                       const bool *valid_symbols) {
-    if (s->indentation <= 3 &&
+    if (s->indentation <= MAX_NON_CODE_INDENT &&
         (valid_symbols[LIST_MARKER_PARENTHESIS] ||
          valid_symbols[LIST_MARKER_DOT] ||
          valid_symbols[LIST_MARKER_PARENTHESIS_DONT_INTERRUPT] ||
@@ -978,13 +1084,15 @@ static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
         size_t digits = 0;
         size_t marker_value = 0;
         while (is_ascii_digit(lexer->lookahead)) {
-            marker_value =
-                (marker_value * 10U) + (size_t)(lexer->lookahead - '0');
+            if (digits < ORDERED_LIST_MAX_DIGITS) {
+                marker_value =
+                    (marker_value * 10U) + (size_t)(lexer->lookahead - '0');
+            }
             digits++;
             advance(s, lexer);
         }
-        bool dont_interrupt = marker_value != 1U;
         if (digits >= 1 && digits <= ORDERED_LIST_MAX_DIGITS) {
+            bool dont_interrupt = marker_value != 1U;
             bool dot = false;
             bool parenthesis = false;
             if (lexer->lookahead == '.') {
@@ -995,9 +1103,9 @@ static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
                 parenthesis = true;
             }
             if (dot || parenthesis) {
-                uint8_t extra_indentation = 0;
+                uint16_t extra_indentation = 0;
                 while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                    extra_indentation += advance(s, lexer);
+                    add_indentation(&extra_indentation, advance(s, lexer));
                 }
                 bool line_end =
                     lexer->lookahead == '\n' || lexer->lookahead == '\r';
@@ -1007,36 +1115,20 @@ static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
                 }
                 dont_interrupt =
                     dont_interrupt && s->matched == s->open_blocks.size;
-                if (extra_indentation >= 1 &&
-                    (dot ? (dont_interrupt
-                                ? valid_symbols[LIST_MARKER_DOT_DONT_INTERRUPT]
-                                : valid_symbols[LIST_MARKER_DOT])
-                         : (dont_interrupt
-                                ? valid_symbols
-                                      [LIST_MARKER_PARENTHESIS_DONT_INTERRUPT]
-                                : valid_symbols[LIST_MARKER_PARENTHESIS]))) {
-                    lexer->result_symbol =
-                        dot ? (dont_interrupt ? LIST_MARKER_DOT_DONT_INTERRUPT
-                                              : LIST_MARKER_DOT)
-                            : (dont_interrupt
-                                   ? LIST_MARKER_PARENTHESIS_DONT_INTERRUPT
-                                   : LIST_MARKER_PARENTHESIS);
-                    extra_indentation--;
-                    if (extra_indentation <= 3) {
-                        extra_indentation += s->indentation;
-                        s->indentation = 0;
-                    } else {
-                        uint8_t temp = s->indentation;
-                        s->indentation = extra_indentation;
-                        extra_indentation = temp;
-                    }
-                    if (!s->simulate &&
-                        !push_block(
-                            s,
-                            (Block)(LIST_ITEM + extra_indentation + digits))) {
-                        return false;
-                    }
-                    return true;
+                TokenType result_symbol =
+                    dot ? (dont_interrupt ? LIST_MARKER_DOT_DONT_INTERRUPT
+                                          : LIST_MARKER_DOT)
+                        : (dont_interrupt
+                               ? LIST_MARKER_PARENTHESIS_DONT_INTERRUPT
+                               : LIST_MARKER_PARENTHESIS);
+                if (extra_indentation >= 1 && valid_symbols[result_symbol]) {
+                    return finish_list_marker(
+                        s, lexer,
+                        (ListMarker){
+                            .result_symbol = result_symbol,
+                            .extra_indentation = extra_indentation,
+                            .marker_width_adjust = (uint16_t)digits,
+                        });
                 }
             }
         }
@@ -1048,7 +1140,7 @@ static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
 
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 static bool parse_minus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
-    if (s->indentation <= 3 &&
+    if (s->indentation <= MAX_NON_CODE_INDENT &&
         (valid_symbols[LIST_MARKER_MINUS] ||
          valid_symbols[LIST_MARKER_MINUS_DONT_INTERRUPT] ||
          valid_symbols[SETEXT_H2_UNDERLINE] || valid_symbols[THEMATIC_BREAK] ||
@@ -1057,7 +1149,7 @@ static bool parse_minus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         bool whitespace_after_minus = false;
         bool minus_after_whitespace = false;
         size_t minus_count = 0;
-        uint8_t extra_indentation = 0;
+        uint16_t extra_indentation = 0;
 
         for (;;) {
             if (lexer->lookahead == '-') {
@@ -1069,7 +1161,7 @@ static bool parse_minus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                 minus_after_whitespace = whitespace_after_minus;
             } else if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
                 if (minus_count == 1) {
-                    extra_indentation += advance(s, lexer);
+                    add_indentation(&extra_indentation, advance(s, lexer));
                 } else {
                     advance(s, lexer);
                 }
@@ -1112,74 +1204,26 @@ static bool parse_minus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             if (minus_count == 1) {
                 mark_end(s, lexer);
             }
-            extra_indentation--;
-            if (extra_indentation <= 3) {
-                extra_indentation += s->indentation;
-                s->indentation = 0;
-            } else {
-                uint8_t temp = s->indentation;
-                s->indentation = extra_indentation;
-                extra_indentation = temp;
-            }
-            if (!s->simulate &&
-                !push_block(s, (Block)(LIST_ITEM + extra_indentation))) {
-                return false;
-            }
-            lexer->result_symbol = dont_interrupt
-                                       ? LIST_MARKER_MINUS_DONT_INTERRUPT
-                                       : LIST_MARKER_MINUS;
-            return true;
+            return finish_list_marker(
+                s, lexer,
+                (ListMarker){
+                    .result_symbol = dont_interrupt
+                                         ? LIST_MARKER_MINUS_DONT_INTERRUPT
+                                         : LIST_MARKER_MINUS,
+                    .extra_indentation = extra_indentation,
+                    .marker_width_adjust = 0,
+                });
         }
         if (minus_count == 3 && (!minus_after_whitespace) && line_end &&
             valid_symbols[MINUS_METADATA]) {
-            for (;;) {
-                // advance over newline
-                if (lexer->lookahead == '\r') {
-                    advance(s, lexer);
-                    if (lexer->lookahead == '\n') {
-                        advance(s, lexer);
-                    }
-                } else {
-                    advance(s, lexer);
-                }
-                // check for minuses
-                minus_count = 0;
-                while (lexer->lookahead == '-') {
-                    minus_count++;
-                    advance(s, lexer);
-                }
-                if (minus_count == 3) {
-                    // if exactly 3 check if next symbol (after eventual
-                    // whitespace) is newline
-                    while (lexer->lookahead == ' ' ||
-                           lexer->lookahead == '\t') {
-                        advance(s, lexer);
-                    }
-                    if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
-                        // if so also consume newline
-                        if (lexer->lookahead == '\r') {
-                            advance(s, lexer);
-                            if (lexer->lookahead == '\n') {
-                                advance(s, lexer);
-                            }
-                        } else {
-                            advance(s, lexer);
-                        }
-                        mark_end(s, lexer);
-                        lexer->result_symbol = MINUS_METADATA;
-                        return true;
-                    }
-                }
-                // otherwise consume rest of line
-                while (lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
-                       !lexer->eof(lexer)) {
-                    advance(s, lexer);
-                }
-                // if end of file is reached, then this is not metadata
-                if (lexer->eof(lexer)) {
-                    break;
-                }
+            ScannerSnapshot metadata_snapshot = snapshot_scanner(s);
+            if (scan_metadata_block(
+                    s, lexer,
+                    (MetadataFence){.delimiter = '-',
+                                    .result_symbol = MINUS_METADATA})) {
+                return true;
             }
+            restore_scanner(s, metadata_snapshot);
         }
         if (success) {
             return true;
@@ -1204,7 +1248,8 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
         return false;
     }
     advance(s, lexer);
-    if (lexer->lookahead == '?' && valid_symbols[HTML_BLOCK_3_START]) {
+    if (lexer->lookahead == '?' && valid_symbols[HTML_BLOCK_3_START] &&
+        s->indentation <= MAX_NON_CODE_INDENT) {
         advance(s, lexer);
         lexer->result_symbol = HTML_BLOCK_3_START;
         if (!s->simulate && !push_block(s, ANONYMOUS)) {
@@ -1217,7 +1262,8 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
         advance(s, lexer);
         if (lexer->lookahead == '-') {
             advance(s, lexer);
-            if (lexer->lookahead == '-' && valid_symbols[HTML_BLOCK_2_START]) {
+            if (lexer->lookahead == '-' && valid_symbols[HTML_BLOCK_2_START] &&
+                s->indentation <= MAX_NON_CODE_INDENT) {
                 advance(s, lexer);
                 lexer->result_symbol = HTML_BLOCK_2_START;
                 if (!s->simulate && !push_block(s, ANONYMOUS)) {
@@ -1226,7 +1272,8 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
                 return true;
             }
         } else if ('A' <= lexer->lookahead && lexer->lookahead <= 'Z' &&
-                   valid_symbols[HTML_BLOCK_4_START]) {
+                   valid_symbols[HTML_BLOCK_4_START] &&
+                   s->indentation <= MAX_NON_CODE_INDENT) {
             advance(s, lexer);
             lexer->result_symbol = HTML_BLOCK_4_START;
             if (!s->simulate && !push_block(s, ANONYMOUS)) {
@@ -1246,7 +1293,8 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
                             if (lexer->lookahead == 'A') {
                                 advance(s, lexer);
                                 if (lexer->lookahead == '[' &&
-                                    valid_symbols[HTML_BLOCK_5_START]) {
+                                    valid_symbols[HTML_BLOCK_5_START] &&
+                                    s->indentation <= MAX_NON_CODE_INDENT) {
                                     advance(s, lexer);
                                     lexer->result_symbol = HTML_BLOCK_5_START;
                                     if (!s->simulate &&
@@ -1297,7 +1345,8 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
                             lexer->result_symbol = HTML_BLOCK_1_END;
                             return true;
                         }
-                    } else if (valid_symbols[HTML_BLOCK_1_START]) {
+                    } else if (valid_symbols[HTML_BLOCK_1_START] &&
+                               s->indentation <= MAX_NON_CODE_INDENT) {
                         lexer->result_symbol = HTML_BLOCK_1_START;
                         if (!s->simulate && !push_block(s, ANONYMOUS)) {
                             return false;
@@ -1318,7 +1367,8 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
             // try block 2 names
             for (size_t i = 0; i < NUM_HTML_TAG_NAMES_RULE_7; i++) {
                 if (strcmp(name, HTML_TAG_NAMES_RULE_7[i]) == 0 &&
-                    valid_symbols[HTML_BLOCK_6_START]) {
+                    valid_symbols[HTML_BLOCK_6_START] &&
+                    s->indentation <= MAX_NON_CODE_INDENT) {
                     lexer->result_symbol = HTML_BLOCK_6_START;
                     if (!s->simulate && !push_block(s, ANONYMOUS)) {
                         return false;
@@ -1336,7 +1386,8 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
         return false;
     }
 
-    if (!valid_symbols[HTML_BLOCK_7_START]) {
+    if (!valid_symbols[HTML_BLOCK_7_START] ||
+        s->indentation > MAX_NON_CODE_INDENT) {
         return false;
     }
 
@@ -1455,19 +1506,19 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
 // NOLINTBEGIN(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
                              const bool *valid_symbols) {
-
-    // unused
-    (void)(valid_symbols);
+    if (!valid_symbols[PIPE_TABLE_START]) {
+        return false;
+    }
 
     // PIPE_TABLE_START is zero width
     mark_end(s, lexer);
+    ScannerSnapshot snapshot = snapshot_scanner(s);
     // count number of cells
     size_t cell_count = 0;
     // also remember if we see starting and ending pipes, as empty headers have
     // to have both
     bool starting_pipe = false;
     bool ending_pipe = false;
-    bool empty = true;
     if (lexer->lookahead == '|') {
         starting_pipe = true;
         advance(s, lexer);
@@ -1492,8 +1543,8 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
             }
         }
     }
-    if (empty && cell_count == 0 && !(starting_pipe && ending_pipe)) {
-        return false;
+    if (cell_count == 0 && !(starting_pipe && ending_pipe)) {
+        return restore_scanner_and_return(s, snapshot, false);
     }
     if (!ending_pipe) {
         cell_count++;
@@ -1509,13 +1560,13 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
             advance(s, lexer);
         }
     } else {
-        return false;
+        return restore_scanner_and_return(s, snapshot, false);
     }
     s->indentation = 0;
     s->column = 0;
     for (;;) {
         if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-            s->indentation += advance(s, lexer);
+            add_indentation(&s->indentation, advance(s, lexer));
         } else {
             break;
         }
@@ -1526,7 +1577,7 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
         if (match(s, lexer, s->open_blocks.items[matched_temp])) {
             matched_temp++;
         } else {
-            return false;
+            return restore_scanner_and_return(s, snapshot, false);
         }
     }
 
@@ -1547,7 +1598,7 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
         if (lexer->lookahead == ':') {
             advance(s, lexer);
             if (lexer->lookahead != '-') {
-                return false;
+                return restore_scanner_and_return(s, snapshot, false);
             }
         }
         bool had_one_minus = false;
@@ -1560,7 +1611,7 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
         }
         if (lexer->lookahead == ':') {
             if (!had_one_minus) {
-                return false;
+                return restore_scanner_and_return(s, snapshot, false);
             }
             advance(s, lexer);
         }
@@ -1575,18 +1626,18 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer,
             continue;
         }
         if (lexer->lookahead != '\r' && lexer->lookahead != '\n') {
-            return false;
+            return restore_scanner_and_return(s, snapshot, false);
         } else {
             break;
         }
     }
     // if the cell counts are not equal then this is not a table
     if (cell_count != delimiter_cell_count) {
-        return false;
+        return restore_scanner_and_return(s, snapshot, false);
     }
 
     lexer->result_symbol = PIPE_TABLE_START;
-    return true;
+    return restore_scanner_and_return(s, snapshot, true);
 }
 // NOLINTEND(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
 
@@ -1630,7 +1681,7 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         // lot of parsing quite a bit easier.
         for (;;) {
             if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                s->indentation += advance(s, lexer);
+                add_indentation(&s->indentation, advance(s, lexer));
             } else {
                 break;
             }
@@ -1640,13 +1691,13 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         // new blocks.
         if (valid_symbols[INDENTED_CHUNK_START] &&
             !valid_symbols[NO_INDENTED_CHUNK]) {
-            if (s->indentation >= 4 && lexer->lookahead != '\n' &&
-                lexer->lookahead != '\r') {
+            if (s->indentation >= INDENTED_CODE_INDENT &&
+                lexer->lookahead != '\n' && lexer->lookahead != '\r') {
                 lexer->result_symbol = INDENTED_CHUNK_START;
                 if (!s->simulate && !push_block(s, INDENTED_CODE_BLOCK)) {
                     return false;
                 }
-                s->indentation -= 4;
+                s->indentation -= INDENTED_CODE_INDENT;
                 return true;
             }
         }
@@ -1762,14 +1813,7 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
     if ((valid_symbols[LINE_ENDING] || valid_symbols[SOFT_LINE_ENDING] ||
          valid_symbols[PIPE_TABLE_LINE_ENDING]) &&
         (lexer->lookahead == '\n' || lexer->lookahead == '\r')) {
-        if (lexer->lookahead == '\r') {
-            advance(s, lexer);
-            if (lexer->lookahead == '\n') {
-                advance(s, lexer);
-            }
-        } else {
-            advance(s, lexer);
-        }
+        consume_line_ending(s, lexer);
         s->indentation = 0;
         s->column = 0;
         if (!(s->state & STATE_CLOSE_BLOCK) &&
@@ -1778,7 +1822,7 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             lexer->mark_end(lexer);
             for (;;) {
                 if (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
-                    s->indentation += advance(s, lexer);
+                    add_indentation(&s->indentation, advance(s, lexer));
                 } else {
                     break;
                 }
@@ -1796,8 +1840,11 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                 }
             }
             bool all_will_be_matched = s->matched == s->open_blocks.size;
-            if (!lexer->eof(lexer) &&
-                !scan(s, lexer, paragraph_interrupt_symbols)) {
+            ScannerSnapshot interrupt_snapshot = snapshot_scanner(s);
+            bool paragraph_interrupted =
+                !lexer->eof(lexer) && scan(s, lexer, paragraph_interrupt_symbols);
+            restore_scanner(s, interrupt_snapshot);
+            if (!paragraph_interrupted) {
                 s->matched = matched_temp;
                 // If the last line break ended a paragraph and no new block
                 // opened, the last line break should have been a soft line
@@ -1860,11 +1907,18 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
 void *tree_sitter_markdown_external_scanner_create(void) {
     _Static_assert(ATX_H6_MARKER == ATX_H1_MARKER + (ATX_HEADING_LEVELS - 1),
                    "ATX marker tokens must be contiguous");
+    _Static_assert(SCANNER_TOKEN_TYPE_COUNT == PIPE_TABLE_LINE_ENDING + 1,
+                   "TokenType must end with SCANNER_TOKEN_TYPE_COUNT");
+    _Static_assert(ANONYMOUS <= UINT8_MAX,
+                   "serialized block values must fit in one byte");
+    _Static_assert(SERIALIZED_HEADER_SIZE <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE,
+                   "serialized header must fit in tree-sitter buffer");
     Scanner *s = ts_malloc(sizeof(Scanner));
     if (s == NULL) {
         return NULL;
     }
     s->open_blocks.items = NULL;
+    s->open_blocks.capacity = 0;
     deserialize(s, NULL, 0);
     return s;
 }
