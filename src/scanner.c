@@ -6,6 +6,13 @@
 #include <stddef.h>
 #include <string.h>
 
+// Portable compile-time assertion. C11's `_Static_assert` would be cleaner,
+// but `binding.gyp` can't pass `/std:c11` to MSVC without colliding with the
+// `/std:c++20` that node-addon-api forces on the shared C/C++ target, so
+// fall back to the negative-sized-array trick that every C dialect accepts.
+#define TS_MD_STATIC_ASSERT(cond, tag) \
+    typedef char ts_md_static_assert_##tag[(cond) ? 1 : -1]
+
 enum {
     // Tab stop used when counting columns for indentation.
     TAB_STOP = 4,
@@ -231,6 +238,16 @@ enum {
     STATE_ALL = STATE_MATCHING | STATE_WAS_SOFT_LINE_BREAK | STATE_CLOSE_BLOCK,
 };
 // NOLINTEND(readability-identifier-length,readability-function-cognitive-complexity,readability-implicit-bool-conversion,readability-avoid-nested-conditional-operator,readability-else-after-return,readability-redundant-parentheses,readability-magic-numbers,readability-braces-around-statements,bugprone-switch-missing-default-case)
+
+TS_MD_STATIC_ASSERT(ATX_H6_MARKER == ATX_H1_MARKER + (ATX_HEADING_LEVELS - 1),
+                    atx_markers_contiguous);
+TS_MD_STATIC_ASSERT(SCANNER_TOKEN_TYPE_COUNT == PIPE_TABLE_LINE_ENDING + 1,
+                    token_type_count_trails_enum);
+TS_MD_STATIC_ASSERT(ANONYMOUS <= UINT8_MAX,
+                    block_fits_in_one_byte);
+TS_MD_STATIC_ASSERT(
+    SERIALIZED_HEADER_SIZE <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE,
+    serialized_header_fits_in_buffer);
 
 typedef struct {
     // A stack of open blocks in the current parse state
@@ -1905,14 +1922,6 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
 
 // NOLINTBEGIN(readability-identifier-length)
 void *tree_sitter_markdown_external_scanner_create(void) {
-    _Static_assert(ATX_H6_MARKER == ATX_H1_MARKER + (ATX_HEADING_LEVELS - 1),
-                   "ATX marker tokens must be contiguous");
-    _Static_assert(SCANNER_TOKEN_TYPE_COUNT == PIPE_TABLE_LINE_ENDING + 1,
-                   "TokenType must end with SCANNER_TOKEN_TYPE_COUNT");
-    _Static_assert(ANONYMOUS <= UINT8_MAX,
-                   "serialized block values must fit in one byte");
-    _Static_assert(SERIALIZED_HEADER_SIZE <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE,
-                   "serialized header must fit in tree-sitter buffer");
     Scanner *s = ts_malloc(sizeof(Scanner));
     if (s == NULL) {
         return NULL;

@@ -24,14 +24,10 @@
             "-std=c11",
           ],
         }, { # OS == "win"
-          "msvs_settings": {
-            "VCCLCompilerTool": {
-              "AdditionalOptions": [
-                "/std:c11",
-                "/utf-8",
-              ],
-            },
-          },
+          "cflags_c": [
+            "/std:c11",
+            "/utf-8",
+          ],
         }],
       ],
     }
