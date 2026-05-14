@@ -4,6 +4,25 @@ Markdown grammar for [tree-sitter](https://github.com/tree-sitter/tree-sitter), 
 
 Parses `.md` (and `.markdown`, `.mdown`, `.mkd`, `.mkdn`) files into a concrete syntax tree covering the full CommonMark block structure plus common extensions (GFM pipe tables, task lists, GFM alerts, YAML/TOML front matter, Pandoc math and directive blocks, footnotes, MDX JSX). Inline content is surfaced as structured children of the `inline` wrapper: classified tokens (`word_token`, `numeric_token`, `identifier_like_token`, `path_like_token`) and punctuation-class nodes (`terminator`, `separator`, `bracket`, `operator_like`), plus inline structural nodes (`emphasis`, `strong`, `strikethrough`, `link`, `image`, `autolink`, `inline_code`, `html_inline`, `math_inline`, `mdx_jsx_inline`, `footnote_reference`).
 
+## Why another Markdown grammar?
+
+Existing tree-sitter Markdown grammars are optimized for syntax highlighting and editor tooling: the `inline` wrapper is opaque, every word is one big text run, and prose-level structure is something the consumer is expected to reconstruct with regex. That works for colorizing a file in a code editor, but it falls apart the moment you want to *reason about prose*.
+
+The driver was [mehen](https://github.com/ophidiarium/mehen) &mdash; a CLI that computes documentation-aware metrics on Markdown files in software repositories. mehen needs to:
+
+- count operators and operands per Markdown construct for [Halstead-style metrics](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#9-markdown-halstead-metrics) (heading markers, list markers, link/image syntax, code-fence delimiters, math delimiters, emphasis &mdash; all distinguishable),
+- distinguish `path_like_token` from `identifier_like_token` from plain `word_token` so it can score [repository grounding](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#15-repository-grounding-score) (does the doc actually anchor to repo files / APIs / versions?),
+- classify every link as inline / reference / autolink and resolve fragments &mdash; so it can compute [link debt](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#11-link-and-reference-metrics) without re-tokenizing,
+- detect [diagrams](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#12-visual-and-diagram-metrics), [embedded code](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#14-embedded-code-config-logs-and-math), [pipe tables](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#13-table-metrics), front-matter, raw HTML / MDX as first-class nodes (for [artifact-debt scoring](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#19-artifact-debt-score), not for highlighting),
+- run a [language-aware prose layer](https://github.com/ophidiarium/mehen/blob/main/docs/mehen_markdown_metrics_research_foundation.md#29-language-aware-prose-metric-layer) on top &mdash; readability formulas, lexical diversity, JTF style rules &mdash; which means it has to know which characters are prose vs. code vs. link target vs. front-matter vs. table delimiter.
+
+A grammar that surfaces those distinctions natively is faster, more accurate, and easier to maintain than bolting them onto a syntax-highlighting grammar with post-processing. Other use cases that benefit from the same shape:
+
+- doc-quality linters (extending `textlint` / `vale` / `proselint` with deeper AST queries),
+- prose stylometry / readability tooling that needs sentence-level segmentation outside of code fences,
+- AI-assisted documentation review &mdash; structural signals (filler density, evidence coverage, repository grounding) work better than authorship classifiers,
+- any tool that needs to walk Markdown the way a compiler walks source code, not the way an editor highlights it.
+
 ## Features
 
 ### Block nodes
