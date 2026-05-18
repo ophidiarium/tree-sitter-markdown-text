@@ -8,7 +8,7 @@ go 1.23
 // against this pinned version catches any ABI bump that would
 // break pinned consumers.
 require (
-	github.com/ophidiarium/tree-sitter-markdown-text v0.0.0
+	github.com/ophidiarium/tree-sitter-markdown-text v0.2.1
 	github.com/tree-sitter/go-tree-sitter v0.24.0
 )
 
